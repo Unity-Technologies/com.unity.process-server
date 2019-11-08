@@ -1,0 +1,19 @@
+platforms:
+  - name: win
+    type: Unity::VM
+    image: core-kaunas/win10-vs2017-dotnetcore:latest
+    flavor: m1.large
+#  - name: mac
+#    type: Unity::VM::osx
+#    image: buildfarm/mac:stable
+#    flavor: m1.mac
+#  - name: linux
+#    type: Unity::VM
+#    image: yamato/ubuntu-18.04-dotnet:latest
+#    flavor: b1.small
+
+editors:
+  - version: 2019.2
+
+packages:
+  - name: com.unity.editor.process-manager

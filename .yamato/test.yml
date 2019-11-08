@@ -1,0 +1,51 @@
+{% metadata_file .yamato_config/config.yml %}
+---
+{% for package in packages %}
+{% for editor in editors %}
+{% for platform in platforms %}
+test_{{ platform.name }}_{{ editor.version }}:
+  name : Test {{ editor.version }} on {{ platform.name }}
+  agent:
+    type: {{ platform.type }}
+    image: {{ platform.image }}
+    flavor: {{ platform.flavor}}
+  variables:
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
+  commands:
+    - |
+      npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
+      upm-ci package test --package-path build\upm\{{ package.name }} -u {{editor.version}}
+
+  dependencies:
+    - .yamato/build.yml#build
+
+  artifacts:
+    logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+{% endfor %}
+{% endfor %}
+{% endfor %}
+
+test_trigger:
+  name: Build and Test All
+  dependencies:
+    {% for package in packages %}
+    {% for editor in editors %}
+    {% for platform in platforms %}
+    - .yamato/test.yml#test_{{ package.safename }}_{{platform.name}}_{{editor.version}}
+    {% endfor %}
+    {% endfor %}
+    {% endfor %}
+  triggers:
+    pull_requests:
+      - targets:
+          only:
+            - "master"
+    branches:
+      only:
+      - "master"
+    tags:
+      only:
+      - "/.*/"

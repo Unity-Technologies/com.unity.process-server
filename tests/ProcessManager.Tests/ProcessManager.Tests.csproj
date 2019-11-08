@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <SolutionDir Condition=" '$(SolutionDir)' == '' ">..\..\</SolutionDir>
+    <PublishTo>$(SolutionDir)build\packages\</PublishTo>
+    <PackageSource>src\</PackageSource>
+    <PackageName>com.unity.editor.process-manager</PackageName>
+    <PackageSubFolder>\Helpers~\</PackageSubFolder>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\com.unity.editor.process-manager\Tests\**\*.cs" Exclude="..\..\src\com.unity.editor.process-manager\Tests\**\UnityBaseTest.cs" />
+    <None Include="..\..\src\com.unity.editor.process-manager\Tests\**\UnityBaseTest.cs" Link="UnityOnly\UnityBaseTest.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
+    <PackageReference Include="NSubstitute" Version="4.2.1" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit.Console" Version="3.10.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.15.1" />
+    <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.47" />
+    <PackageReference Include="SpoiledCat.Unity.Utilities" Version="1.0.47" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\com.unity.editor.process-manager\Editor\Unity.Editor.ProcessManager.csproj" />
+    <ProjectReference Include="..\Helpers\TestBase\TestBase.csproj" />
+  </ItemGroup>
+
+  <Import Project="copyhelperbinaries.targets" />
+
+</Project>

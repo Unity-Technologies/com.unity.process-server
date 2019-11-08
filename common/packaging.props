@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PublishTo Condition="'$(PublishTo)' == '' ">$(RepoRoot)build\packages\</PublishTo>
+    <CurrentFullPath>$(MSBuildProjectDirectory)</CurrentFullPath>
+    <PackageSourceRoot Condition="'$(PackageSourceRoot)' == ''">$(MSBuildProjectDirectory)\..\</PackageSourceRoot>
+    <PackageSourceRootFull>$([System.IO.Path]::GetFullPath($(PackageSourceRoot)))</PackageSourceRootFull>
+
+    <TmpPackageName>$([System.IO.Path]::GetDirectoryName($(PackageSourceRootFull)))</TmpPackageName>
+    <PackageName Condition="'$(PackageName)' == '' ">$([System.IO.Path]::GetFileName($(TmpPackageName)))</PackageName>
+
+    <PackageSubFolder>\$(CurrentFullPath.Substring($(PackageSourceRootFull.Length)))\</PackageSubFolder>
+    <PackageTestName>$(PackageName).tests</PackageTestName>
+
+    <NpmVersionSuffix></NpmVersionSuffix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(RepoRoot)icon.png" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="icon.png" />
+  </ItemGroup>
+
+</Project>
