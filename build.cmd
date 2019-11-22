@@ -1,6 +1,10 @@
 @echo off
 setlocal
 
+if NOT "x%YAMATO_JOB_ID%"=="x" set GITLAB_CI=1
+if NOT "x%YAMATO_JOB_ID%"=="x" set CI_COMMIT_TAG=%GIT_TAG%
+if NOT "x%YAMATO_JOB_ID%"=="x" set CI_COMMIT_REF_NAME=%GIT_BRANCH%
+
 SET CONFIGURATION=Release
 SET PUBLIC=""
 SET BUILD=0

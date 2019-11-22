@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFrameworks>net471;netcoreapp2.2</TargetFrameworks>
+    <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\..\'))</RootDir>
+    <PackageSourceRoot>$(MSBuildProjectDirectory)\..\..\</PackageSourceRoot>
+    <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
+    <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
+    <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\Unity.Ipc\src\com.unity.ipc\Editor\Unity.Ipc\Unity.Ipc.csproj" />
+    <ProjectReference Include="..\..\..\ProcessServer\ProcessServer.csproj" Private="false" PrivateAssets="all" />
+    <ProjectReference Include="..\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
+  </ItemGroup>
+
+  <Import Project="$(RootDir)common\unityreferences.targets" />
+
+  <!-- package the sources and version stamp everything only when doing a full build -->
+  <Import Project="$(RootDir)common\packaging.targets" Condition="'$(FullBuild)' == 'true'" />
+  <ItemGroup Condition="'$(FullBuild)' == 'true'">
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19554-01" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

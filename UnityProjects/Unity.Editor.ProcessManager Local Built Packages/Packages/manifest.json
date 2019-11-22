@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.unity.editor.process-manager": "file:../../../build/packages/com.unity.editor.process-manager",
-    "com.unity.editor.process-manager.tests": "file:../../../build/packages/com.unity.editor.process-manager.tests",
+    "com.unity.process-server": "file:../../../build/packages/com.unity.process-server",
+    "com.unity.process-server.tests": "file:../../../build/packages/com.unity.process-server.tests",
     "com.unity.package-manager-ui": "2.2.0",
     "com.unity.test-framework": "1.0.13",
     "com.unity.modules.imageconversion": "1.0.0",
@@ -10,6 +10,6 @@
     "com.unity.modules.ui": "1.0.0"
   },
   "testables": [
-    "com.unity.editor.process-manager.tests"
+    "com.unity.process-server.tests"
   ]
 }

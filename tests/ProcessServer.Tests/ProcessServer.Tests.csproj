@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RootDir>
+    <PublishTo>$(RootDir)build\packages\</PublishTo>
+    <PackageSource>src\</PackageSource>
+    <PackageName>com.unity.process-server</PackageName>
+    <PackageSubFolder>\Helpers~\</PackageSubFolder>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\com.unity.process-server\Tests\**\*.cs" Exclude="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" />
+    <None Include="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" Link="UnityOnly\UnityBaseTest.cs" />
+
+    <MonoZip Include="..\Helpers\mono\MonoBleedingEdge.zip" />
+    <None Include="@(MonoZip)" Link="Resources\MonoBleedingEdge.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0-preview-20191115-01" />
+    <PackageReference Include="NSubstitute" Version="4.2.1" />
+    <PackageReference Include="NUnit" Version="3.12.0" />
+    <PackageReference Include="NUnit.Console" Version="3.10.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.15.1" />
+    <PackageReference Include="SpoiledCat.Unity.Utilities" Version="1.0.48-g7b0be0a7a9" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj" />
+    <ProjectReference Include="..\..\src\ProcessServer\ProcessServer.csproj" />
+    <ProjectReference Include="..\Helpers\Helper.CommandLine\Helper.CommandLine.csproj" />
+    <ProjectReference Include="..\Helpers\TestBase\TestBase.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="..\Helpers\mono\MonoBleedingEdge.zip">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Import Project="copyhelperbinaries.targets" />
+
+  <!-- Target Name="UnzipMono"
+    DependsOnTargets="AfterBuild"
+    AfterTargets="AfterBuild">
+
+    <MakeDir Directories="$(OutputPath)\Editor\MonoBleedingEdge" />
+
+    <Unzip
+      SourceFiles="@(MonoZip)"
+      DestinationFolder="$(OutputPath)\Editor\MonoBleedingEdge"
+      SkipUnchangedFiles="true"
+      OverwriteReadOnlyFiles="true"
+    />
+  </Target -->
+
+</Project>

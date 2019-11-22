@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <PackageSubFolder>\Editor\Server~\</PackageSubFolder>
+  </PropertyGroup>
+
+  <Target Name="CopyBinariesToMainSource"
+      Condition=" '$(TargetFramework)' == 'net471' "
+      DependsOnTargets="AfterBuild;EnumerateBinaries"
+      AfterTargets="AfterBuild"
+      Inputs="@(BinariesToCopy)"
+      Outputs="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)%(Filename)%(Extension)')"
+      >
+
+    <MakeDir Directories="$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)" />
+
+    <Copy
+      SourceFiles="@(BinariesToCopy)"
+      DestinationFiles="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      />
+
+  </Target>
+
+  <Target Name="CleanArtifacts" AfterTargets="AfterClean">
+    <RemoveDir Directories="$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)" />
+  </Target>
+
+  <Target Name="EnumerateBinaries" Returns="@(BinariesToCopy)">
+    <CreateItem Include="$(OutputPath)**\*.*">
+      <Output TaskParameter="Include" ItemName="BinariesToCopy" />
+    </CreateItem>
+  </Target>
+
+</Project>

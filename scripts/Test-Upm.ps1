@@ -1,5 +1,7 @@
 [CmdletBinding()]
 Param(
+    [string]
+    $UnityVersion
     [switch]
     $Trace = $false
 )
@@ -17,5 +19,5 @@ Get-ChildItem -Directory $upmDir | % {
     Write-Output "Testing $($_.Name)"
 
     $packageDir = Join-Path $upmDir $_.Name
-    Invoke-Command -Fatal { & upm-ci package test --package-path $packageDir -u 2019.2 }
+    Invoke-Command -Fatal { & upm-ci package test --package-path $packageDir -u $UnityVersion }
 }

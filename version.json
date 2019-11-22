@@ -3,7 +3,8 @@
   "version": "0.1-preview",
   "publicReleaseRefSpec": [
     "^refs/heads/master$",
-    "^refs/heads/v\\d+(?:.\\d+)?$"
+    "^refs/heads/v\\d+\\.\\d+",
+    "^refs/tags/v\\d+\\.\\d+"
   ],
   "inherit": false
 }

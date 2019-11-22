@@ -3,13 +3,12 @@
 publish_nuget:
   name: Publish Nuget
   agent:
-    type: Unity::VM
-    image: core-kaunas/win10-vs2017-dotnetcore:latest
-    flavor: m1.large
+    type: {{ build_agent_type }}
+    image: {{ build_agent_image }}
+    flavor: {{ build_agent_flavor }}
   interpreter: powershell
   skip_checkout: true
   variables:
-    DOTNET_CLI_TELEMETRY_OPTOUT: 1
     PUBLISH_URL: https://artifactory.internal.unity3d.com/api/nuget/core-utilities
 
   commands:
@@ -24,17 +23,18 @@ publish_nuget:
 publish_npm:
   name: Publish Npm
   agent:
-    type: Unity::VM
-    image: core-kaunas/win10-vs2017-dotnetcore:latest
-    flavor: m1.large
+    type: {{ upm_agent_type }}
+    image: {{ upm_agent_image }}
+    flavor: {{ upm_agent_flavor }}
   skip_checkout: true
   variables:
-    DOTNET_CLI_TELEMETRY_OPTOUT: 1
     PUBLISH_URL: https://artifactory.internal.unity3d.com/api/npm/core-npm
     AUTH_URL: https://artifactory.internal.unity3d.com/api/npm/auth
 
   commands:
-    - curl -u%ARTIFACTORY% %PUBLISH_URL%/auth > %USERPROFILE%\.npmrc
+    - |
+      @echo off
+      curl -u%ARTIFACTORY% %AUTH_URL% > %USERPROFILE%\.npmrc
     - for /f "delims=" %%d in ('dir /b "upm-ci~\packages\*.tgz"') do (call npm publish "upm-ci~\packages\%%d" --quiet --registry %PUBLISH_URL%)
 
   dependencies:
@@ -44,12 +44,10 @@ publish_npm:
 publish_packman:
   name: Publish to Candidates
   agent:
-    type: Unity::VM
-    image: core-kaunas/win10-vs2017-dotnetcore:latest
-    flavor: m1.large
+    type: {{ upm_agent_type }}
+    image: {{ upm_agent_image }}
+    flavor: {{ upm_agent_flavor }}
   skip_checkout: true
-  variables:
-    DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
   commands:
     - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm

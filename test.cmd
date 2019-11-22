@@ -1,10 +1,15 @@
 @echo off
 setlocal
 
+if NOT "x%YAMATO_JOB_ID%"=="x" set GITLAB_CI=1
+if NOT "x%YAMATO_JOB_ID%"=="x" set CI_COMMIT_TAG=%GIT_TAG%
+if NOT "x%YAMATO_JOB_ID%"=="x" set CI_COMMIT_REF_NAME=%GIT_BRANCH%
+
 SET CONFIGURATION=Release
 SET PUBLIC=""
 SET BUILD=0
 set UPM=0
+set UNITYVERSION=2019.2
 
 :loop
 IF NOT "%1"=="" (
@@ -34,9 +39,13 @@ IF NOT "%1"=="" (
     )
     IF "%1"=="-u" (
         SET UPM=1
+        SHIFT
+        SET UNITYVERSION=%1
     )
     IF "%1"=="--upm" (
         SET UPM=1
+        SHIFT
+        SET UNITYVERSION=%1
     )
     SHIFT
     GOTO :loop
@@ -46,8 +55,8 @@ if "x%BUILD%"=="x1" (
 	dotnet restore
 	dotnet build --no-restore -c %CONFIGURATION% %PUBLIC%
 )
-dotnet test --no-build --no-restore -c %CONFIGURATION% %PUBLIC%
+dotnet test --no-build --no-restore -c %CONFIGURATION% %PUBLIC% --logger "trx;LogFileName=dotnet-test-result.trx"
 
 if "x%UPM%"=="x1" (
-  call powershell scripts/Test-Upm.ps1
+  call powershell scripts/Test-Upm.ps1 -UnityVersion %UNITYVERSION%
 )

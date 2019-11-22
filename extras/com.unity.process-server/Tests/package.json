@@ -1,0 +1,19 @@
+{
+    "name": "com.unity.process-server.tests",
+    "displayName": "Tests - Unity Process Manager",
+    "description": "Tests - Unity Process Manager",
+    "type": "tests",
+    "version": "0.0.0-placeholder",
+    "license" : "MIT",
+    "author": {
+      "name": "Unity Technologies"
+    },
+    "repository" : {
+      "type" : "git",
+      "url": "ssh://git@github.com/Unity-Technologies/com.unity.process-server.git",
+      "directory": ""
+    },
+    "dependencies": {
+        "com.unity.process-server": "0.0.0-placeholder"
+    }
+}

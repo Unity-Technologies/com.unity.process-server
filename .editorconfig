@@ -25,10 +25,10 @@ csharp_style_var_when_type_is_apparent=true:hint
 csharp_using_directive_placement=inside_namespace:silent
 dotnet_style_predefined_type_for_locals_parameters_members=true:hint
 dotnet_style_predefined_type_for_member_access=true:hint
-dotnet_style_qualification_for_event=false:warning
-dotnet_style_qualification_for_field=false:warning
-dotnet_style_qualification_for_method=false:warning
-dotnet_style_qualification_for_property=false:warning
+dotnet_style_qualification_for_event = false:none
+dotnet_style_qualification_for_field = false:none
+dotnet_style_qualification_for_method = false:none
+dotnet_style_qualification_for_property = false:none
 
 # ReSharper properties
 resharper_align_multiline_binary_expressions_chain=false
@@ -57,3 +57,6 @@ resharper_place_accessorholder_attribute_on_same_line=False
 resharper_space_before_fixed_parentheses=false
 resharper_space_before_lock_parentheses=false
 resharper_space_within_single_line_array_initializer_braces=true
+
+# CS1998: Async method lacks 'await' operators and will run synchronously
+dotnet_diagnostic.CS1998.severity = none

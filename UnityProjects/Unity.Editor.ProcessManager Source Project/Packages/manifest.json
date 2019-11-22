@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.unity.editor.process-manager": "file:../../../src/com.unity.editor.process-manager",
+    "com.unity.process-server": "file:../../../src/com.unity.process-server",
     "com.unity.ext.nunit": "1.0.0",
     "com.unity.ide.rider": "1.1.0",
     "com.unity.ide.vscode": "1.1.2",
@@ -13,6 +13,6 @@
     "com.unity.modules.ui": "1.0.0"
   },
   "testables": [
-    "com.unity.editor.process-manager"
+    "com.unity.process-server"
   ]
 }

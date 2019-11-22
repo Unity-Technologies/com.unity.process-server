@@ -410,3 +410,4 @@ MigrationBackup/
 !?*~/
 # but ignore autocopied helper binaries
 Helpers~/
+Server~/

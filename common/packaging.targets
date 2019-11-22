@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <Import Project="packaging.props" />
+  <!-- Prevent this from being imported multiple times -->
+  <Import Condition="'$(PropsIncluded)' == ''" Project="packaging.props" />
+  <Import Project="packageversionfiles.targets" />
 
   <ItemGroup>
     <PackageReference Include="SpoiledCat.MSBuild.Tasks.FileUpdate" Version="1.0.13" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
 
-  <ItemGroup>
-    <VersionFiles Include="$(IntermediateOutputPath)\$(AssemblyName).Version$(DefaultLanguageSourceExtension)" />
-  </ItemGroup>
-
   <!-- Assemble all sources into a folder called (PackageName) -->
   <Target Name="EnumeratePackageFiles" Returns="@(SourcesToCopy)">
     <CreateItem
-      Include="$(PackageSourceRootFull)**\*.*;$(SolutionDir)\extras\$(PackageName)\**\*.*"
-      Exclude="$(PackageSourceRootFull)**\*.csproj*;$(PackageSourceRootFull)**\*.ncrunch*;$(PackageSourceRootFull)**\obj\**;$(PackageSourceRootFull)version.json*;$(PackageSourceRootFull)Tests\**;$(SolutionDir)\extras\$(PackageName)\Tests\**">
+      Include="$(PackageSourceRootFull)**\*.*;$(RootDir)\extras\$(PackageName)\**\*.*"
+      Exclude="$(PackageSourceRootFull)**\*.csproj*;$(PackageSourceRootFull)**\*.ncrunch*;$(PackageSourceRootFull)**\obj\**;$(PackageSourceRootFull)version.json*;$(PackageSourceRootFull)Tests\**;$(RootDir)\extras\$(PackageName)\Tests\**">
       <Output TaskParameter="Include" ItemName="SourcesToCopy" />
     </CreateItem>
   </Target>
@@ -23,8 +21,8 @@
   <Target Name="CopySourcesToPackmanPackage"
     DependsOnTargets="EnumeratePackageFiles"
     AfterTargets="AfterBuild"
-    Inputs="@(SourcesToCopy);@(VersionFiles)"
-    Outputs="@(SourcesToCopy->'$(PublishTo)$(PackageName)\%(RecursiveDir)%(Filename)%(Extension)');@(VersionFiles->'$(PublishTo)$(PackageName)$(PackageSubFolder)Version%(Extension)')"
+    Inputs="@(SourcesToCopy)"
+    Outputs="@(SourcesToCopy->'$(PublishTo)$(PackageName)\%(RecursiveDir)%(Filename)%(Extension)')"
     Returns="$Ran"
     >
 
@@ -36,19 +34,15 @@
       DestinationFiles="@(SourcesToCopy->'$(PublishTo)$(PackageName)\%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true" />
 
-    <Copy
-      SourceFiles="@(VersionFiles)"
-      DestinationFiles="@(VersionFiles->'$(PublishTo)$(PackageName)$(PackageSubFolder)Version%(Extension)')"
-      SkipUnchangedFiles="true" />
-
   </Target>
 
   <Target Name="UpdatePackageJson" DependsOnTargets="CopySourcesToPackmanPackage" AfterTargets="CopySourcesToPackmanPackage"
      Condition=" '$(TargetFramework)' == 'net471' " >
 
     <PropertyGroup>
-      <NpmVersion Condition="'$(PublicRelease)' != 'true'">$(BuildVersionSimple)$(NpmVersionSuffix)-g$(GitCommitIdShort)</NpmVersion>
-      <NpmVersion Condition="'$(PublicRelease)' == 'true'">$(NuGetPackageVersion)$(NpmVersionSuffix)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' == '' ">$(NuGetPackageVersion)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' != '' and '$(PublicRelease)' != 'true'">$(BuildVersionSimple)$(NpmVersionSuffix)-g$(GitCommitIdShort)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' != '' and '$(PublicRelease)' == 'true'">$(NuGetPackageVersion)$(NpmVersionSuffix)</NpmVersion>
     </PropertyGroup>
 
     <FileUpdate
@@ -82,7 +76,7 @@
       Condition="Exists('$(PublishTo)$(PackageName)\CHANGELOG.md')"
       Files="$(PublishTo)$(PackageName)\CHANGELOG.md"
       Regex="## \[VERSION\] - DATE"
-      ReplacementText="## [$(NuGetPackageVersion)] - $([System.DateTime]::Now.ToString(&quot;yyyy-MM-dd&quot;))"
+      ReplacementText="## [$(NpmVersion)] - $([System.DateTime]::Now.ToString(&quot;yyyy-MM-dd&quot;))"
       Encoding="utf-8-without-bom" />
 
     <Message Condition="'$(FileWasStamped)' == 'true'"
@@ -108,7 +102,7 @@
   <!-- Assemble all test files in a Tests folder into a package called (PackageName).tests -->
   <Target Name="EnumeratePackageTestFiles" Returns="@(TestsToCopy)">
     <CreateItem
-      Include="$(PackageSourceRootFull)\Tests\**\*.*;$(SolutionDir)\extras\$(PackageName)\Tests\**\*.*"
+      Include="$(PackageSourceRootFull)\Tests\**\*.*;$(RootDir)\extras\$(PackageName)\Tests\**\*.*"
       Exclude="$(PackageSourceRootFull)\Tests\**\*.csproj*;$(PackageSourceRootFull)\Tests\**\*.ncrunch*;$(PackageSourceRootFull)\Tests\**\obj\**;$(PackageSourceRootFull)\Tests\Helpers~\$(AssemblyName)*;$(PackageSourceRootFull)\Tests\Helpers~\nunit*;$(PackageSourceRootFull)\Tests\Helpers~\*Test*;$(PackageSourceRootFull)\Tests\Helpers~\Castle*;$(PackageSourceRootFull)\Tests\Helpers~\Microsoft*;$(PackageSourceRootFull)\Tests\Helpers~\System.*;$(PackageSourceRootFull)\Tests\Helpers~\NSubstitute*
       ">
       <Output TaskParameter="Include" ItemName="TestsToCopy" />
@@ -145,11 +139,13 @@
     Condition="Exists('$(PackageSourceRoot)\Tests') and '$(TargetFramework)' == 'net471' " >
 
     <PropertyGroup>
-    <NpmVersion Condition="'$(PublicRelease)' != 'true'">$(BuildVersionSimple)$(NpmVersionSuffix)-g$(GitCommitIdShort)</NpmVersion>
-    <NpmVersion Condition="'$(PublicRelease)' == 'true'">$(NuGetPackageVersion)$(NpmVersionSuffix)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' == '' ">$(NuGetPackageVersion)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' != '' and '$(PublicRelease)' != 'true'">$(BuildVersionSimple)$(NpmVersionSuffix)-g$(GitCommitIdShort)</NpmVersion>
+      <NpmVersion Condition=" '$(NpmVersionSuffix)' != '' and '$(PublicRelease)' == 'true'">$(NuGetPackageVersion)$(NpmVersionSuffix)</NpmVersion>
     </PropertyGroup>
 
     <FileUpdate
+      Condition="Exists('$(PublishTo)$(PackageTestName)\package.json')"
       Files="$(PublishTo)$(PackageTestName)\package.json"
       Regex="&quot;version&quot;: &quot;.*&quot;"
       ReplacementText="&quot;version&quot;: &quot;$(NpmVersion)&quot;">
@@ -163,6 +159,7 @@
       ReplacementText="$1: &quot;$(NpmVersion)&quot;" />
 
     <FileUpdate
+      Condition="Exists('$(PublishTo)$(PackageTestName)\package.json')"
       Files="$(PublishTo)$(PackageTestName)\package.json"
       Regex="&quot;directory&quot;: &quot;.*&quot;"
       ReplacementText="&quot;directory&quot;: &quot;src/$(PackageName)/Tests&quot;" />
