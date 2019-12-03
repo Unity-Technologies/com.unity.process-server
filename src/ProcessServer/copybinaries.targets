@@ -1,30 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
-  <PropertyGroup>
-    <PackageSubFolder>\Editor\Server~\</PackageSubFolder>
-  </PropertyGroup>
-
-  <Target Name="CopyBinariesToMainSource"
-      Condition=" '$(TargetFramework)' == 'net471' "
+  <Target Name="CopyBinariesToPackage"
       DependsOnTargets="AfterBuild;EnumerateBinaries"
       AfterTargets="AfterBuild"
       Inputs="@(BinariesToCopy)"
-      Outputs="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)%(Filename)%(Extension)')"
+      Outputs="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)\$(PackageSubFolder)%(RecursiveDir)%(Filename)%(Extension)');@(BinariesToCopy->'$(PublishTo)$(PackageName)$(PackageSubFolder)%(RecursiveDir)%(Filename)%(Extension)')"
       >
-
-    <MakeDir Directories="$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)" />
 
     <Copy
       SourceFiles="@(BinariesToCopy)"
-      DestinationFiles="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)%(Filename)%(Extension)')"
+      DestinationFiles="@(BinariesToCopy->'$(PublishTo)$(PackageName)$(PackageSubFolder)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      />
+
+    <Copy
+      SourceFiles="@(BinariesToCopy)"
+      DestinationFiles="@(BinariesToCopy->'$(RootDir)$(PackageSource)$(PackageName)\$(PackageSubFolder)%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
       />
 
   </Target>
 
   <Target Name="CleanArtifacts" AfterTargets="AfterClean">
-    <RemoveDir Directories="$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)" />
+    <RemoveDir Directories="$(PublishTo)$(PackageName)$(PackageSubFolder);$(RootDir)$(PackageSource)$(PackageName)$(PackageSubFolder)" />
   </Target>
 
   <Target Name="EnumerateBinaries" Returns="@(BinariesToCopy)">

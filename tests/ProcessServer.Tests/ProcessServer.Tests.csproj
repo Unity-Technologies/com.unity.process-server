@@ -13,8 +13,6 @@
     <Compile Include="..\..\src\com.unity.process-server\Tests\**\*.cs" Exclude="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" />
     <None Include="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" Link="UnityOnly\UnityBaseTest.cs" />
 
-    <MonoZip Include="..\Helpers\mono\MonoBleedingEdge.zip" />
-    <None Include="@(MonoZip)" Link="Resources\MonoBleedingEdge.zip" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,26 +30,7 @@
     <ProjectReference Include="..\Helpers\Helper.CommandLine\Helper.CommandLine.csproj" />
     <ProjectReference Include="..\Helpers\TestBase\TestBase.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Update="..\Helpers\mono\MonoBleedingEdge.zip">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 
   <Import Project="copyhelperbinaries.targets" />
-
-  <!-- Target Name="UnzipMono"
-    DependsOnTargets="AfterBuild"
-    AfterTargets="AfterBuild">
-
-    <MakeDir Directories="$(OutputPath)\Editor\MonoBleedingEdge" />
-
-    <Unzip
-      SourceFiles="@(MonoZip)"
-      DestinationFolder="$(OutputPath)\Editor\MonoBleedingEdge"
-      SkipUnchangedFiles="true"
-      OverwriteReadOnlyFiles="true"
-    />
-  </Target -->
 
 </Project>

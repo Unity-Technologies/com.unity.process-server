@@ -19,14 +19,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProcessServer", "src\Proces
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Editor.ProcessServer.Interfaces", "src\com.unity.process-server\Editor\Shared\Unity.Editor.ProcessServer.Interfaces.csproj", "{6941CC84-F8BE-4D17-84DE-201C26C62D6E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Editor.Tasks", "..\com.unity.editor.tasks\src\com.unity.editor.tasks\Editor\Unity.Editor.Tasks.csproj", "{047A4D96-9E74-4810-AB04-605EB4DF2D22}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Ipc.Interfaces", "..\Unity.Ipc\src\com.unity.ipc\Editor\Unity.Ipc.Interfaces\Unity.Ipc.Interfaces.csproj", "{93DF50B5-CF61-41C4-94DF-82B097987362}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Ipc", "..\Unity.Ipc\src\com.unity.ipc\Editor\Unity.Ipc\Unity.Ipc.csproj", "{00CA1050-4CE7-4183-92A1-933C218BA50E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Ipc.Hosted", "..\Unity.Ipc\src\Unity.Ipc.Hosted\Unity.Ipc.Hosted.csproj", "{CE2FC5C3-CA98-419E-9258-873B308DBB3B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

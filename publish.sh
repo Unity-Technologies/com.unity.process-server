@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 { set +x; } 2>/dev/null
-SOURCE=$0
+SOURCE="${BASH_SOURCE[0]}"
 DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 
 OS="Mac"
@@ -36,6 +36,9 @@ while (( "$#" )); do
       shift
       CONFIGURATION=$1
     ;;
+    -g|--github)
+      GITHUB=1
+    ;;
     -*|--*=) # unsupported flags
       echo "Error: Unsupported flag $1" >&2
       exit 1
@@ -51,11 +54,18 @@ if [[ x"${YAMATO_JOB_ID:-}" != x"" ]]; then
   export CI_COMMIT_REF_NAME="${GIT_BRANCH:-}"
 fi
 
-pushd $DIR >/dev/null 2>&1
-
-if [[ x"${APPVEYOR:-}" == x"" ]]; then
-  dotnet restore
+if [[ x"${PUBLISH_KEY:-}" == x"" ]]; then
+  echo "Can't publish without a PUBLISH_KEY environment variable in the user:token format" >&2
+  popd >/dev/null 2>&1
+  exit 1
 fi
-dotnet build --no-restore -c $CONFIGURATION $PUBLIC
 
-popd >/dev/null 2>&1
+if [[ x"${PUBLISH_URL:-}" == x"" ]]; then
+  echo "Can't publish without a PUBLISH_URL environment variable" >&2
+  popd >/dev/null 2>&1
+  exit 1
+fi
+
+for p in "$DIR/build/nuget/**/*nupkg"; do
+  dotnet nuget push $p -ApiKey "${PUBLISH_KEY}" -Source "${PUBLISH_URL}"
+done

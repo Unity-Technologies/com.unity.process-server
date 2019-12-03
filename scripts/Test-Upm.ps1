@@ -1,7 +1,7 @@
 [CmdletBinding()]
 Param(
     [string]
-    $UnityVersion
+    $UnityVersion = "2019.2",
     [switch]
     $Trace = $false
 )
@@ -13,11 +13,13 @@ if ($Trace) {
 
 . $PSScriptRoot\helpers.ps1 | out-null
 
-$upmDir = Join-Path $rootDirectory 'build\upm'
+$srcdir = Join-Path $rootDirectory 'src'
 
-Get-ChildItem -Directory $upmDir | % {
-    Write-Output "Testing $($_.Name)"
+Get-ChildItem -Directory $srcdir | % {
+    if (Test-Path "$srcDir\$($_)\package.json") {
+        Write-Output "Testing $($_.Name)"
 
-    $packageDir = Join-Path $upmDir $_.Name
-    Invoke-Command -Fatal { & upm-ci package test --package-path $packageDir -u $UnityVersion }
+        $packageDir = Join-Path $srcdir $_.Name
+        Invoke-Command -Fatal { & upm-ci package test --package-path $packageDir -u $UnityVersion }
+    }
 }

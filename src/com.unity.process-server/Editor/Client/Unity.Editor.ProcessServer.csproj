@@ -5,14 +5,21 @@
     <PackageSourceRoot>$(MSBuildProjectDirectory)\..\..\</PackageSourceRoot>
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
     <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
+    <Description>An ipc server that runs and monitors processes for Unity clients.</Description>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\Unity.Ipc\src\com.unity.ipc\Editor\Unity.Ipc\Unity.Ipc.csproj" />
+    <None Remove="lib\**;**\*.meta;*.DotSettings;*.ncrunch*;**\*.asmdef;bin\**;obj\**;LICENSE.md;version.json;package.json" />
+    <None Include="$(RootDir)icon.png" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="icon.png" Condition="Exists('$(RootDir)icon.png')" />
+    <None Include="$(RootDir)LICENSE.md" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="LICENSE.md" Condition="Exists('$(RootDir)LICENSE.md')" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\ProcessServer\ProcessServer.csproj" Private="false" PrivateAssets="all" />
     <ProjectReference Include="..\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
     <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
+    <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
   </ItemGroup>
 
   <Import Project="$(RootDir)common\unityreferences.targets" />
@@ -20,8 +27,8 @@
   <!-- package the sources and version stamp everything only when doing a full build -->
   <Import Project="$(RootDir)common\packaging.targets" Condition="'$(FullBuild)' == 'true'" />
   <ItemGroup Condition="'$(FullBuild)' == 'true'">
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19554-01" PrivateAssets="All" />
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" Private="false" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19367-01" PrivateAssets="All" Private="false" />
   </ItemGroup>
 
 </Project>

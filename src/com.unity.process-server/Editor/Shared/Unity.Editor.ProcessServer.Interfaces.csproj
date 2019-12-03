@@ -14,8 +14,8 @@
 
   <!-- package the sources and version stamp everything only when doing a full build -->
   <ItemGroup Condition="'$(FullBuild)' == 'true'">
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19554-01" PrivateAssets="All" />
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" Private="false" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19367-01" PrivateAssets="All" Private="false" />
   </ItemGroup>
   <Import Project="$(RootDir)common\packageversionfiles.targets" Condition="'$(FullBuild)' == 'true'" />
 
