@@ -28,7 +28,6 @@
         }
     }
 
-
     public class ProcessRunner
     {
         private readonly ITaskManager taskManager;
@@ -38,7 +37,7 @@
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
         private readonly Dictionary<string, IpcProcess> processes = new Dictionary<string, IpcProcess>();
-        private readonly Dictionary<string, ITask> tasks = new Dictionary<string, ITask>();
+        private readonly Dictionary<string, IProcessTask> tasks = new Dictionary<string, IProcessTask>();
         private readonly Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
 
         public ProcessRunner(ITaskManager taskManager,
@@ -64,7 +63,7 @@
             app.ApplicationStopping.Register(cts.Cancel);
         }
 
-        public string PrepareProcess(IRequestContext client, string executable, string args,
+        public string Prepare(IRequestContext client, string executable, string args,
             ProcessOptions options, string workingDirectory = null)
         {
             if (options.UseProjectPath)
@@ -140,7 +139,17 @@
             GetTask(id).Start();
         }
 
-        public void AddOrUpdateTask(string id, ITask task)
+        public void Detach(string id)
+        {
+            var process = GetProcess(id);
+            if (process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
+            {
+                var task = GetTask(id);
+                task.Stop();
+            }
+        }
+
+        public void AddOrUpdateTask(string id, IProcessTask task)
         {
             if (tasks.ContainsKey(id))
                 tasks[id] = task;
@@ -148,7 +157,7 @@
                 tasks.Add(id, task);
         }
 
-        public ITask GetTask(string id)
+        public IProcessTask GetTask(string id)
         {
             if (tasks.TryGetValue(id, out var task))
             {
@@ -225,21 +234,27 @@
             this.client = client;
         }
 
-        public Task<IpcProcess> PrepareProcess(string executable, string args, string workingDirectory, ProcessOptions options)
+        public Task<IpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options)
         {
-            var id = owner.PrepareProcess(client, executable, args, options, workingDirectory);
+            var id = owner.Prepare(client, executable, args, options, workingDirectory);
             return Task.FromResult(owner.GetProcess(id));
         }
 
-        public Task<IpcProcess> PrepareProcess(string executable, string args, ProcessOptions options)
+        public Task<IpcProcess> Prepare(string executable, string args, ProcessOptions options)
         {
-            var id = owner.PrepareProcess(client, executable, args, options);
+            var id = owner.Prepare(client, executable, args, options);
             return Task.FromResult(owner.GetProcess(id));
         }
 
-        public Task RunProcess(IpcProcess process)
+        public Task Run(IpcProcess process)
         {
             owner.RunProcess(process.Id);
+            return Task.CompletedTask;
+        }
+
+        public Task Detach(IpcProcess process)
+        {
+            owner.Detach(process.Id);
             return Task.CompletedTask;
         }
     }

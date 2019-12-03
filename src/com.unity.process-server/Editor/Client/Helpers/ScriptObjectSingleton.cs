@@ -10,7 +10,7 @@ namespace Unity.Editor.ProcessServer
     [AttributeUsage(AttributeTargets.Class)]
     sealed class LocationAttribute : Attribute
     {
-        public enum Location { PreferencesFolder, ProjectFolder, CacheFolder }
+        public enum Location { PreferencesFolder, ProjectFolder, CacheFolder, TempFolder }
 
         private string relativePath;
         private Location location;
@@ -29,6 +29,8 @@ namespace Unity.Editor.ProcessServer
                     filePath = InternalEditorUtility.unityPreferencesFolder + "/" + relativePath;
                 else if (location == Location.CacheFolder)
                     filePath = Path.GetFullPath("Cache/" + relativePath);
+                else if (location == Location.TempFolder)
+                    filePath = Path.GetFullPath("Temp/" + relativePath);
                 return filePath;
             }
         }

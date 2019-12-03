@@ -3,7 +3,9 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "com.unity.process-server"
+        "com.unity.process-server",
+        "com.unity.editor.tasks",
+        ""
     ],
     "includePlatforms": [
         "Editor"

@@ -2,21 +2,31 @@
 {
     using System;
     using System.IO;
+    using System.Text;
     using Tasks;
+    using Extensions;
 
     public class ProcessManagerTask : DotNetProcessTask<int>
     {
-        private const string ProcessManagerExe = "processserver.exe";
-
         public ProcessManagerTask(ITaskManager taskManager,
             IProcessManager processManager,
-            string baseLocation,
-            string projectPath)
-            : base(taskManager, processManager, Path.Combine(baseLocation, ProcessManagerExe), $"-projectPath {projectPath} -debug")
+            IEnvironment environment,
+            IProcessServerConfiguration configuration)
+            : base(taskManager, processManager, configuration.ExecutablePath, CreateArguments(environment))
 
         {
             Affinity = TaskAffinity.LongRunning;
             LongRunning = true;
+        }
+
+        private static string CreateArguments(IEnvironment environment)
+        {
+            var args = new StringBuilder();
+            args.Append("-projectPath ");
+            args.Append(environment.UnityProjectPath.Quote());
+            args.Append(" -unityPath ");
+            args.Append(environment.UnityApplicationContents.Quote());
+            return args.ToString();
         }
 
         protected override void ConfigureOutputProcessor()

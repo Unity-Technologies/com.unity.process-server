@@ -10,9 +10,17 @@ namespace Unity.Editor.ProcessServer.Interfaces
 
     public interface IProcessRunner
     {
-        Task<IpcProcess> PrepareProcess(string executable, string args, string workingDirectory, ProcessOptions options);
-        Task<IpcProcess> PrepareProcess(string executable, string args, ProcessOptions options);
-        Task RunProcess(IpcProcess process);
+        Task<IpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options);
+        Task<IpcProcess> Prepare(string executable, string args, ProcessOptions options);
+        Task Run(IpcProcess process);
+
+        /// <summary>
+        /// Stop the process if it's not set to be kept alive, otherwise keep it running but detach
+        /// all handlers to it.
+        /// </summary>
+        /// <param name="process"></param>
+        /// <returns></returns>
+        Task Detach(IpcProcess process);
     }
 
     public enum MonitorOptions

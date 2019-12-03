@@ -1,17 +1,19 @@
 {
-    "name": "com.unity.process-server",
-    "displayName": "Process Manager",
-    "description": "",
-    "version": "0.0.0-placeholder",
-    "license" : "MIT",
-    "author": {
-      "name": "Unity Technologies"
-    },
-    "repository" : {
-      "type" : "git",
-      "url": "ssh://git@github.com/Unity-Technologies/com.unity.process-server.git",
-      "directory": ""
-    },
-    "dependencies": {
-    }
+  "name": "com.unity.process-server",
+  "displayName": "Process Server",
+  "description": "This library lets you run external processes that can survive Unity domain reloads.",
+  "version": "0.0.0-placeholder",
+  "license": "MIT",
+  "author": {
+    "name": "Unity Technologies"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com/Unity-Technologies/com.unity.process-server.git",
+    "directory": ""
+  },
+  "dependencies": {
+    "com.unity.ipc": "1.0.21-preview",
+    "com.unity.editor.tasks": "1.1.17"
+  }
 }

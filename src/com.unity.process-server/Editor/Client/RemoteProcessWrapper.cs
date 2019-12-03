@@ -10,6 +10,7 @@
 
     public class RemoteProcessWrapper : BaseProcessWrapper
     {
+        public event Action<RemoteProcessWrapper, IpcProcess> OnProcessPrepared;
         private readonly IProcessServer processServer;
         private readonly IOutputProcessor outputProcessor;
 
@@ -26,7 +27,6 @@
         public RemoteProcessWrapper(
             IProcessServer processServer,
             Process process,
-            ProcessOptions processOptions,
             IOutputProcessor outputProcessor,
             Action onStart,
             Action onEnd,
@@ -35,7 +35,6 @@
             : base(process)
         {
             this.processServer = processServer;
-            ProcessOptions = processOptions;
             this.outputProcessor = outputProcessor;
             this.onStart = onStart;
             this.onEnd = onEnd;
@@ -43,23 +42,34 @@
             token.Register(cts.Cancel);
         }
 
+        public void Configure(ProcessOptions options)
+        {
+            ProcessOptions = options;
+        }
+
         public override void Run()
         {
             var runner = processServer.ProcessRunner;
 
-            var task = runner.PrepareProcess(Process.StartInfo.FileName,
-                Process.StartInfo.Arguments, Process.StartInfo.WorkingDirectory, ProcessOptions);
-            task.Wait(cts.Token);
-            remoteProcess = task.Result;
+            try
+            {
+                var task = runner.Prepare(Process.StartInfo.FileName,
+                    Process.StartInfo.Arguments, Process.StartInfo.WorkingDirectory, ProcessOptions);
 
-            processServer.OnProcessStart += OnProcessStart;
-            processServer.OnProcessEnd += OnProcessEnd;
-            processServer.OnProcessOutput += OnProcessOutput;
-            processServer.OnProcessError += OnProcessError;
+                task.Wait(cts.Token);
 
-            runner.RunProcess(remoteProcess).Wait(cts.Token);
+                remoteProcess = task.Result;
 
-            cts.Token.WaitHandle.WaitOne();
+                OnProcessPrepared?.Invoke(this, remoteProcess);
+
+                runner.Run(remoteProcess).Wait(cts.Token);
+
+                cts.Token.WaitHandle.WaitOne();
+            }
+            catch (Exception ex)
+            {
+                thrownException = new ProcessException(-99, ex.Message, ex);
+            }
 
             if (thrownException != null || errors.Count > 0)
                 RaiseOnError(thrownException, string.Join(Environment.NewLine, errors.ToArray()));
@@ -82,73 +92,55 @@
             }
         }
 
-        private void OnProcessStart(object sender, IpcProcessEventArgs e)
+        public void OnProcessStart()
         {
-            if (e.Process.Id != remoteProcess.Id)
-                return;
-
             RaiseOnStart();
         }
 
-        private void OnProcessError(object sender, IpcProcessErrorEventArgs e)
+        public void OnProcessError(IpcProcessErrorEventArgs e)
         {
-            if (e.Process.Id != remoteProcess.Id)
-                return;
-
             errors.Add(e.Errors);
         }
 
-        private void OnProcessOutput(object sender, IpcProcessOutputEventArgs e)
+        public void OnProcessOutput(IpcProcessOutputEventArgs e)
         {
-            if (e.Process.Id != remoteProcess.Id)
-                return;
-
             outputProcessor.Process(e.Data);
         }
 
-        private void OnProcessEnd(object sender, IpcProcessEndEventArgs e)
+        public void OnProcessEnd(IpcProcessEndEventArgs e)
         {
-            if (e.Process.Id != remoteProcess.Id)
-                return;
-
             if (!e.Successful)
                 thrownException = e.Exception;
 
-            Stop();
+            // the task is completed if the process server isn't going to restart it
+            if (ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
+                Stop();
         }
 
         private void Cleanup()
         {
-            processServer.OnProcessStart -= OnProcessStart;
-            processServer.OnProcessEnd -= OnProcessEnd;
-            processServer.OnProcessOutput -= OnProcessOutput;
-            processServer.OnProcessError -= OnProcessError;
-
             RaiseOnEnd();
         }
 
         private void RaiseOnStart()
         {
             onStart?.Invoke();
-            onStart = null;
         }
 
         private void RaiseOnEnd()
         {
             onEnd?.Invoke();
-            onEnd = null;
         }
 
         private void RaiseOnError(Exception ex, string errors)
         {
             onError?.Invoke(ex, errors);
-            onError = null;
         }
 
 
         private bool disposed;
 
-        public ProcessOptions ProcessOptions { get; }
+        public ProcessOptions ProcessOptions { get; private set; }
 
         protected override void Dispose(bool disposing)
         {
@@ -158,10 +150,6 @@
 
             if (disposing)
             {
-                processServer.OnProcessStart -= OnProcessStart;
-                processServer.OnProcessEnd -= OnProcessEnd;
-                processServer.OnProcessOutput -= OnProcessOutput;
-                processServer.OnProcessError -= OnProcessError;
                 disposed = true;
             }
 

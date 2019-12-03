@@ -22,7 +22,6 @@
     <PackageReference Include="NUnit.Console" Version="3.10.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.15.1" />
     <PackageReference Include="SpoiledCat.Unity.Utilities" Version="1.0.48-g7b0be0a7a9" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj" />

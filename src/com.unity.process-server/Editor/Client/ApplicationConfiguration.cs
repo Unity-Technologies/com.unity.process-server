@@ -1,9 +1,5 @@
 ﻿using System;
 using UnityEditor;
-using UnityEditorInternal;
-using System.Globalization;
-using System.Runtime.Serialization;
-using System.IO;
 using UnityEngine;
 
 namespace Unity.Editor.ProcessServer
@@ -75,10 +71,11 @@ namespace Unity.Editor.ProcessServer
         }
     }
 
-    [Location("processserver/appsettings.yaml", LocationAttribute.Location.CacheFolder)]
+    [Location("processserver/appsettings.yaml", LocationAttribute.Location.TempFolder)]
     class ApplicationConfiguration : ScriptObjectSingleton<ApplicationConfiguration>, IProcessServerConfiguration
     {
         [SerializeField] private int port;
+        [SerializeField] private string executablePath;
 
         public int Port
         {
@@ -88,6 +85,26 @@ namespace Unity.Editor.ProcessServer
                 if (port != value)
                 {
                     port = value;
+                    Save(true);
+                }
+            }
+        }
+
+        public string ExecutablePath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(executablePath))
+                {
+                    ExecutablePath = System.IO.Path.GetFullPath("Packages/com.unity.process-server/Server~/processserver.exe");
+                }
+                return executablePath;
+            }
+            set
+            {
+                if (executablePath != value)
+                {
+                    executablePath = value;
                     Save(true);
                 }
             }

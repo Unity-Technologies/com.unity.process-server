@@ -16,9 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\ProcessServer\ProcessServer.csproj" Private="false" PrivateAssets="all" />
     <ProjectReference Include="..\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.18-g85aa41381e" />
     <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
   </ItemGroup>
 

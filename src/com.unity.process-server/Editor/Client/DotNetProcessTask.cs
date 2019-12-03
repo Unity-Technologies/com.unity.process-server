@@ -136,39 +136,4 @@
         public override string ProcessName => executable;
         public override string ProcessArguments => arguments;
     }
-
-    class RemoteDotNetProcessTask : RemoteProcessTask
-    {
-        private readonly SPath executable;
-        private readonly string arguments;
-
-        public RemoteDotNetProcessTask(ITaskManager taskManager,
-            IProcessManager processManager,
-            IProcessServer processServer,
-            string executable,
-            string arguments,
-            ProcessOptions options,
-            IProcessEnvironment processEnvironment = null,
-            string workingDirectory = null)
-            : base(taskManager, processEnvironment ?? processManager.DefaultProcessEnvironment,
-                processServer, options: options)
-        {
-            if (ProcessEnvironment.Environment.IsWindows)
-            {
-                this.executable = executable.ToSPath();
-                this.arguments = arguments;
-            }
-            else
-            {
-                this.arguments = executable + " " + arguments;
-                this.executable = ProcessEnvironment.Environment.UnityApplicationContents.ToSPath()
-                                                    .Combine("MonoBleedingEdge", "bin", "mono" + ProcessEnvironment.Environment.ExecutableExtension);
-            }
-
-            processManager.Configure(this, workingDirectory);
-        }
-
-        public override string ProcessName => executable;
-        public override string ProcessArguments => arguments;
-    }
 }
