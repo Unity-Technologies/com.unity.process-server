@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -51,52 +52,68 @@
             this.processManager = processManager;
             this.processEnvironment = processEnvironment;
             this.environment = environment;
-            host.OnClientDisconnect += (provider, args) => {
-                var c = provider.GetRequestContext();
-                var reqs = clients.Keys.Where(x => clients[x] == c).ToArray();
-                foreach (var key in reqs)
-                {
-                    clients.Remove(key);
-                }
-            };
 
-            app.ApplicationStopping.Register(cts.Cancel);
-        }
-
-        public string Prepare(IRequestContext client, string executable, string args,
-            ProcessOptions options, string workingDirectory = null)
-        {
-            if (options.UseProjectPath)
+            if (host != null)
             {
-                var parsed = new SpoiledCat.Extensions.Configuration.ExtendedCommandLineConfigurationProvider(args.Split(' '), null);
-                parsed.Load();
-                if (!parsed.TryGet("projectpath", out _))
-                {
-                    args += $" -projectPath {environment.UnityProjectPath}";
-                }
+                host.OnClientDisconnect += (provider, args) => {
+                    var c = provider.GetRequestContext();
+                    var reqs = clients.Keys.Where(x => clients[x] == c).ToArray();
+                    foreach (var key in reqs)
+                    {
+                        clients.Remove(key);
+                    }
+                };
             }
 
-            workingDirectory = workingDirectory ?? environment.UnityProjectPath;
+            app?.ApplicationStopping.Register(cts.Cancel);
+        }
 
-            string id = Guid.NewGuid().ToString();
-            var process = new IpcProcess(id, 0, executable, args, workingDirectory, options);
+        public string Prepare(IRequestContext client, string executable, string arguments, ProcessOptions options, string workingDir = null)
+        {
+            var outputProcessor = new RaiseAndDiscardOutputProcessor();
+            var task = new ProcessTask<string>(taskManager, processEnvironment, executable, arguments, outputProcessor: outputProcessor)
+                .Configure(processManager, workingDir);
+
+            var startInfo = ProcessInfo.FromStartInfo(task.Process.StartInfo);
+
+            var id = startInfo.GetId();
+            var process = new IpcProcess(id, startInfo, options);
 
             processes.AddOrUpdate(id, process);
+            tasks.AddOrUpdate(id, task);
+            clients.AddOrUpdate(id, client);
 
+            HookupProcessHandlers(client, process, id, outputProcessor, task);
+
+            return id;
+        }
+
+        public string Prepare(IRequestContext client, ProcessInfo startInfo, ProcessOptions options)
+        {
+            var id = startInfo.GetId();
+            var process = new IpcProcess(id, startInfo, options);
+            processes.AddOrUpdate(id, process);
             return SetupProcess(client, process);
         }
 
         private string SetupProcess(IRequestContext client, IpcProcess process)
         {
             var id = process.Id;
+
             var outputProcessor = new RaiseAndDiscardOutputProcessor();
-            var task = new ProcessTask<string>(taskManager, processEnvironment, process.Executable, process.Arguments, outputProcessor);
+            var task = new ProcessTask<string>(taskManager, processEnvironment, outputProcessor: outputProcessor);
+            processManager.Configure(task, process.StartInfo.ToStartInfo());
 
             tasks.AddOrUpdate(id, task);
             clients.AddOrUpdate(id, client);
 
-            processManager.Configure(task, process.WorkingDirectory.ToSPath());
+            HookupProcessHandlers(client, process, id, outputProcessor, task);
 
+            return id;
+        }
+
+        private void HookupProcessHandlers(IRequestContext client, IpcProcess process, string id, RaiseAndDiscardOutputProcessor outputProcessor, ProcessTask<string> task)
+        {
             task.OnStartProcess += async p => await RaiseOnProcessStart(id, p.ProcessId);
             task.OnEnd += async (t, _, success, ex) => await RaiseOnProcessEnd(id, success, ex, t.Errors);
             task.OnErrorData += async e => await RaiseOnProcessError(id, e);
@@ -105,7 +122,11 @@
             if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive)
             {
                 // restart the process with the same arguments when it stops
-                var restartTask = new ActionTask(task.TaskManager, () => RestartProcess(client, process)) { Affinity = task.Affinity };
+                var restartTask = new ActionTask(task.TaskManager, () => {
+                    // if process was not manually stopped by the user
+                    if (processes.ContainsKey(id))
+                        RestartProcess(client, id);
+                }) { Affinity = task.Affinity };
                 task.Then(restartTask, TaskRunOptions.OnAlways);
             }
             else
@@ -113,18 +134,18 @@
                 task.Finally((_, __, ___) => {
                     tasks.Remove(id);
                     clients.Remove(id);
-                    processes.Remove(id);
+                    if (processes.ContainsKey(id))
+                        processes.Remove(id);
                 });
             }
-
-            return id;
         }
 
-        private void RestartProcess(IRequestContext client, IpcProcess process)
+        private void RestartProcess(IRequestContext client, string id)
         {
             if (cts.IsCancellationRequested)
                 return;
 
+            var process = GetProcess(id);
             ProcessRestartReason reason = ProcessRestartReason.UserInitiated;
             if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive)
                 reason = ProcessRestartReason.KeepAlive;
@@ -134,19 +155,16 @@
             RunProcess(process.Id);
         }
 
-        public void RunProcess(string id)
+        public IProcessTask RunProcess(string id)
         {
-            GetTask(id).Start();
+            return GetTask(id).Start();
         }
 
-        public void Detach(string id)
+        public IProcessTask Stop(string id)
         {
-            var process = GetProcess(id);
-            if (process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
-            {
-                var task = GetTask(id);
-                task.Stop();
-            }
+            var task = GetTask(id);
+            task.Stop();
+            return task;
         }
 
         public void AddOrUpdateTask(string id, IProcessTask task)
@@ -179,7 +197,7 @@
         {
             if (processes.TryGetValue(id, out var process))
             {
-                var newp = new IpcProcess(id, processId, process.Executable, process.Arguments, process.WorkingDirectory, process.ProcessOptions);
+                var newp = new IpcProcess(id, process.StartInfo, process.ProcessOptions);
                 processes[id] = newp;
                 return newp;
             }
@@ -246,15 +264,21 @@
             return Task.FromResult(owner.GetProcess(id));
         }
 
+        public Task<IpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options)
+        {
+            var id = owner.Prepare(client, startInfo, options);
+            return Task.FromResult(owner.GetProcess(id));
+        }
+
         public Task Run(IpcProcess process)
         {
             owner.RunProcess(process.Id);
             return Task.CompletedTask;
         }
 
-        public Task Detach(IpcProcess process)
+        public Task Stop(IpcProcess process)
         {
-            owner.Detach(process.Id);
+            owner.Stop(process.Id);
             return Task.CompletedTask;
         }
     }

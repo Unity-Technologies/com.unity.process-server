@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.18-g85aa41381e" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.18-g65200a137d" />
     <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
   </ItemGroup>
 

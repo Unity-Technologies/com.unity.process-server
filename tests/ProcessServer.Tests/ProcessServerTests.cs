@@ -2,6 +2,7 @@
 
 namespace BaseTests
 {
+    using NSubstitute;
     using System;
     using System.Diagnostics;
     using System.Threading.Tasks;
@@ -10,6 +11,7 @@ namespace BaseTests
     using Unity.Editor.ProcessServer.Interfaces;
     using Unity.Editor.ProcessServer.Internal.IO;
     using Unity.Editor.Tasks;
+    using Unity.Ipc;
 
     [TestFixture]
     public class ProcessServerTests : BaseTest
@@ -72,12 +74,37 @@ namespace BaseTests
                                     test.TestApp, "-d done",
                                     outputProcessor: new FirstNonNullLineOutputProcessor<string>())
                                 .Configure(processServer)
-                                .StartAwait().Timeout(3000, "The process did not finish on time");
+                                .StartAwait().Timeout(10000, "The process did not finish on time");
 
                 Assert.AreEqual("done", ret);
 
                 processServer.Stop();
                 await processServer.Completion.Task.Timeout(100, "The server did not stop on time");
+            }
+        }
+
+        [Test]
+        public async Task Server_CanRestartProcess()
+        {
+            using (var test = StartTest())
+            {
+                var runner = new Unity.Editor.ProcessServer.Server.ProcessRunner(test.TaskManager, test.ProcessManager,
+                    test.ProcessManager.DefaultProcessEnvironment, test.Environment, null, null);
+
+                var notifications = Substitute.For<IServerNotifications>();
+                var client = Substitute.For<IRequestContext>();
+                client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
+
+                string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
+
+                var task = runner.RunProcess(id);
+
+                await task.Task;
+
+                await Task.Delay(100);
+                await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
+
+                await runner.Stop(id).Task;                
             }
         }
 
@@ -105,7 +132,7 @@ namespace BaseTests
 
                 task.Start();
 
-                var reason = await restarted.Task.Timeout(3000, "Restart did not happen on time");
+                var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
 
                 task.Detach();
 

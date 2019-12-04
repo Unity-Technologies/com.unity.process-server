@@ -3,7 +3,6 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -174,6 +173,13 @@
                 StandardErrorEncoding = Encoding.UTF8
             };
 
+            return Configure(processTask, startInfo, options, workingDirectory);
+        }
+
+        public T Configure<T>(T processTask, ProcessStartInfo startInfo, ProcessOptions options, string workingDirectory = null)
+            where T : IProcessTask
+        {
+
             startInfo.FileName = processTask.ProcessName.ToSPath().ToString();
             startInfo.Arguments = processTask.ProcessArguments;
 
@@ -193,7 +199,8 @@
             return processTask;
         }
 
-        T IProcessManager.Configure<T>(T processTask, string workingDirectory) => Configure(processTask, new ProcessOptions());
+        public T Configure<T>(T processTask, ProcessStartInfo startInfo, string workingDirectory = null) where T : IProcessTask => Configure(processTask, startInfo, default, workingDirectory);
+        public T Configure<T>(T processTask, string workingDirectory) where T : IProcessTask => Configure(processTask, new ProcessOptions());
 
         public BaseProcessWrapper WrapProcess(string taskName,
             Process process,

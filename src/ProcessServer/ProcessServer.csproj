@@ -23,8 +23,8 @@
     <PackageReference Include="SpoiledCat.Extensions.Configuration.Yaml" Version="1.0.4" />
     <PackageReference Include="YamlDotNet" Version="8.0.0" />
     <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.17" />
     <PackageReference Include="Unity.Ipc.Hosted" Version="1.0.21-preview" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.1.18-g14e458d28c" />
   </ItemGroup>
 
   <ItemGroup>
