@@ -1,17 +1,16 @@
 ﻿using NUnit.Framework;
+using NSubstitute;
+using System.Threading.Tasks;
+using Unity.Editor.ProcessServer;
+using Unity.Editor.ProcessServer.Interfaces;
+using Unity.Editor.ProcessServer.Internal.IO;
+using Unity.Editor.Tasks;
+using Unity.Ipc;
+using Unity.Editor.Tasks.Extensions;
+using System.Diagnostics;
 
 namespace BaseTests
 {
-    using NSubstitute;
-    using System;
-    using System.Diagnostics;
-    using System.Threading.Tasks;
-    using Unity.Editor.ProcessServer;
-    using Unity.Editor.ProcessServer.Extensions;
-    using Unity.Editor.ProcessServer.Interfaces;
-    using Unity.Editor.ProcessServer.Internal.IO;
-    using Unity.Editor.Tasks;
-    using Unity.Ipc;
 
     [TestFixture]
     public class ProcessServerTests : BaseTest
@@ -35,16 +34,17 @@ namespace BaseTests
         {
             using (var test = StartTest())
             {
-                var task = new ProcessManagerTask(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation));
+                using (var task = new ProcessManagerTask(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation)))
+                {
+                    var port = await task.StartAwait();
+                    Assert.Greater(port, 40000);
 
-                var port = await task.StartAwait();
-
-                var process = task.Process;
-                process.Kill();
-                process.WaitForExit(500);
-                process.Close();
-
-                Assert.Greater(port, 40000);
+                    var id = task.ProcessId;
+                    var p = Process.GetProcessById(id);
+                    p.Kill();
+                    p.WaitForExit();
+                    p.Close();
+                }
             }
         }
 
@@ -52,11 +52,11 @@ namespace BaseTests
         public async Task CanStartAndShutdown()
         {
             using (var test = StartTest())
-            using (var processServer = new TestProcessServer(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
+            using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
                 processServer.Connect();
                 processServer.Stop();
-                var shutdown = await processServer.Completion.Task;
+                var shutdown = processServer.Completion.WaitOne(1000);
                 Assert.True(shutdown, "Server did not shutdown on time");
             }
         }
@@ -65,21 +65,21 @@ namespace BaseTests
         public async Task CanExecuteProcessRemotely()
         {
             using (var test = StartTest())
-            using (var processServer = new TestProcessServer(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString()) ))
+            using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString()) ))
             {
                 processServer.Connect();
 
                 var ret = await new ProcessTask<string>(test.TaskManager,
                                     test.ProcessManager.DefaultProcessEnvironment,
-                                    test.TestApp, "-d done",
+                                    TestApp, "-d done",
                                     outputProcessor: new FirstNonNullLineOutputProcessor<string>())
-                                .Configure(processServer)
+                                .Configure(processServer.ProcessManager)
                                 .StartAwait().Timeout(10000, "The process did not finish on time");
 
                 Assert.AreEqual("done", ret);
 
                 processServer.Stop();
-                await processServer.Completion.Task.Timeout(100, "The server did not stop on time");
+                Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
             }
         }
 
@@ -112,52 +112,56 @@ namespace BaseTests
         public async Task CanExecuteAndRestartProcess()
         {
             using (var test = StartTest())
-            using (var processServer = new TestProcessServer(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
+            using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
                 processServer.Connect();
 
-                var task = new ProcessTask<string>(test.TaskManager,
-                            test.ProcessManager.DefaultProcessEnvironment,
-                            test.TestApp, "-s 100", new SimpleOutputProcessor())
-                    .Configure(processServer, new ProcessOptions(MonitorOptions.KeepAlive, true));
+                try
+                {
+                    var task = new ProcessTask<string>(test.TaskManager,
+                                test.ProcessManager.DefaultProcessEnvironment,
+                                TestApp, "-s 100", new SimpleOutputProcessor())
+                        .Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
 
-                var restartCount = 0;
+                    var restartCount = 0;
 
-                var restarted = new TaskCompletionSource<ProcessRestartReason>();
-                processServer.OnProcessRestart += (sender, args) => {
-                    restartCount++;
-                    if (restartCount == 2)
-                        restarted.TrySetResult(args.Reason);
-                };
+                    var restarted = new TaskCompletionSource<ProcessRestartReason>();
+                    processServer.ProcessManager.OnProcessRestart += (sender, args) => {
+                        restartCount++;
+                        if (restartCount == 2)
+                            restarted.TrySetResult(args.Reason);
+                    };
 
-                task.Start();
+                    task.Start();
 
-                var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
+                    var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
 
-                task.Detach();
+                    task.Detach();
 
-                Assert.AreEqual(ProcessRestartReason.KeepAlive, reason);
-
-                processServer.Stop();
-                await processServer.Completion.Task.Timeout(100, "The server did not stop on time");
+                    Assert.AreEqual(ProcessRestartReason.KeepAlive, reason);
+                }
+                finally
+                {
+                    processServer.Stop();
+                    Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
+                }
             }
         }
 
         class TestProcessServer : ProcessServer
         {
-            private Process process;
+            private BaseProcessWrapper process;
 
             public TestProcessServer(ITaskManager taskManager,
-                IProcessManager processManager,
                 IEnvironment environment,
                 IProcessServerConfiguration configuration)
-                : base(taskManager, processManager, environment, configuration)
+                : base(taskManager, environment, configuration)
             {}
 
             protected override ITask<int> RunProcessServer(string pathToServerExecutable)
             {
                 var task = base.RunProcessServer(pathToServerExecutable);
-                process = ((IProcessTask<int>)task).Wrapper.Process;
+                process = ((IProcessTask)task).Wrapper;
                 return task;
             }
 
@@ -168,8 +172,8 @@ namespace BaseTests
                 {
                     if (!process.HasExited)
                     {
-                        process.Kill();
-                        process.Close();
+                        process.Stop();
+                        process.Dispose();
                     }
                 }
                 catch

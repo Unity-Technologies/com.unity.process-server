@@ -11,7 +11,8 @@
     public class RemoteProcessWrapper : BaseProcessWrapper
     {
         public event Action<RemoteProcessWrapper, IpcProcess> OnProcessPrepared;
-        private readonly IProcessServer processServer;
+
+        private readonly IProcessRunner runner;
         private readonly IOutputProcessor outputProcessor;
 
         private Action onStart;
@@ -25,16 +26,16 @@
         private bool detached = false;
 
         public RemoteProcessWrapper(
-            IProcessServer processServer,
-            Process process,
+            IProcessRunner runner,
+            ProcessStartInfo startInfo,
             IOutputProcessor outputProcessor,
             Action onStart,
             Action onEnd,
             Action<Exception, string> onError,
             CancellationToken token)
-            : base(process)
+            : base(startInfo)
         {
-            this.processServer = processServer;
+            this.runner = runner;
             this.outputProcessor = outputProcessor;
             this.onStart = onStart;
             this.onEnd = onEnd;
@@ -49,12 +50,9 @@
 
         public override void Run()
         {
-            var runner = processServer.ProcessRunner;
-
             try
             {
-                var task = runner.Prepare(Process.StartInfo.FileName,
-                    Process.StartInfo.Arguments, Process.StartInfo.WorkingDirectory, ProcessOptions);
+                var task = runner.Prepare(ProcessInfo.FromStartInfo(StartInfo), ProcessOptions);
 
                 task.Wait(cts.Token);
 
@@ -71,6 +69,8 @@
                 thrownException = new ProcessException(-99, ex.Message, ex);
             }
 
+            HasExited = true;
+
             if (thrownException != null || errors.Count > 0)
                 RaiseOnError(thrownException, string.Join(Environment.NewLine, errors.ToArray()));
 
@@ -79,8 +79,10 @@
 
         public override void Stop(bool dontWait = false)
         {
-            Cleanup();
-            cts.Cancel();
+            var task = runner.Stop(remoteProcess);
+            if (!dontWait)
+                task.Wait(cts.Token);
+            Dispose();
         }
 
         public override void Detach()
@@ -88,7 +90,7 @@
             if (!detached)
             {
                 detached = true;
-                cts.Cancel();
+                Dispose();
             }
         }
 
@@ -112,14 +114,9 @@
             if (!e.Successful)
                 thrownException = e.Exception;
 
-            // the task is completed if the process server isn't going to restart it
+            // the task is completed if the process server isn't going to restart it, we can finish up
             if (ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
-                Stop();
-        }
-
-        private void Cleanup()
-        {
-            RaiseOnEnd();
+                cts.Cancel();
         }
 
         private void RaiseOnStart()
@@ -137,22 +134,24 @@
             onError?.Invoke(ex, errors);
         }
 
-
         private bool disposed;
-
-        public ProcessOptions ProcessOptions { get; private set; }
-
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
 
             if (disposed) return;
+            disposed = true;
 
             if (disposing)
             {
-                disposed = true;
+                OnProcessPrepared = null;
+                cts.Cancel();
+                cts.Dispose();
             }
 
         }
+
+        public ProcessOptions ProcessOptions { get; private set; }
+
     }
 }

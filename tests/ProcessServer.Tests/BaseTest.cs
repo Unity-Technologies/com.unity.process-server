@@ -9,118 +9,13 @@ using System.Threading.Tasks;
 
 namespace BaseTests
 {
-    using SpoiledCat.Utilities;
     using Unity.Editor.ProcessServer.Internal.IO;
 
     public partial class BaseTest
 	{
 		public const bool TracingEnabled = false;
 
-		public BaseTest()
-		{
-			LogHelper.LogAdapter = new NUnitLogAdapter();
-			LogHelper.TracingEnabled = TracingEnabled;
-		}
-
-		internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName);
-
-        internal class TestData : IDisposable
-        {
-            public readonly Stopwatch Watch;
-            public readonly ILogging Logger;
-            public readonly ITaskManager TaskManager;
-            public readonly SPath TestPath;
-            public readonly IEnvironment Environment;
-            public readonly IProcessManager ProcessManager;
-            public readonly string TestName;
-
-            public TestData(string testName)
-            {
-                TestName = testName;
-                Logger = new LogFacade(TestName, new NUnitLogAdapter(), TracingEnabled);
-                Watch = new Stopwatch();
-                TaskManager = new TaskManager();
-                try
-                {
-                    TaskManager.Initialize();
-                }
-                catch
-                {
-                    // we're on the nunit sync context, which can't be used to create a task scheduler
-                    // so use a different context as the main thread. The test won't run on the main nunit thread
-                    TaskManager.Initialize(new MainThreadSynchronizationContext(TaskManager.Token));
-                }
-
-                TestPath = SPath.CreateTempDirectory(testName);
-                Environment = new UnityEnvironment(testName);
-                InitializeEnvironment();
-                ProcessManager = new ProcessManager(Environment);
-
-                Logger.Trace($"START {testName}");
-                Watch.Start();
-            }
-
-            private void InitializeEnvironment()
-            {
-                var projectPath = TestPath.Combine("project").EnsureDirectoryExists();
-                SPath unityPath, unityContentsPath;
-
-                if (Environment.IsWindows)
-                {
-                    unityPath = unityContentsPath = TestPath.Combine("unity").EnsureDirectoryExists();
-                }
-                else
-                {
-                    unityPath = CurrentExecutionDirectory;
-
-                    while (!unityPath.IsEmpty && !unityPath.DirectoryExists(".Editor"))
-                        unityPath = unityPath.Parent;
-
-                    if (!unityPath.IsEmpty)
-                    {
-                        unityPath = unityPath.Combine(".Editor");
-                        unityContentsPath = unityPath.Combine("Data");
-                    }
-                    else
-                    {
-                        unityPath = unityContentsPath = TestPath.Combine("unity").EnsureDirectoryExists();
-                        var ziphelper = new ZipHelper();
-                        ziphelper.Extract(CurrentExecutionDirectory.Combine("Resources", "MonoBleedingEdge.zip"),
-                            unityPath.Combine("MonoBleedingEdge").EnsureDirectoryExists(),
-                            TaskManager.Token,
-                            (_, __) => { },
-                            (_, __, ___) => true);
-                    }
-                }
-
-                Environment.Initialize(projectPath, "2019.2", unityPath, unityContentsPath);
-            }
-
-
-            public void Dispose()
-            {
-                Watch.Stop();
-                Logger.Trace($"STOP {TestName} :{Watch.ElapsedMilliseconds}ms");
-                ProcessManager.Dispose();
-                TaskManager.Dispose();
-                if (SynchronizationContext.Current is IMainThreadSynchronizationContext ourContext)
-                    ourContext.Dispose();
-            }
-
-            internal SPath? testApp;
-
-            internal SPath CurrentExecutionDirectory => System.Reflection.Assembly.GetExecutingAssembly().Location.ToSPath().Parent;
-
-            internal SPath TestApp
-            {
-                get
-                {
-                    if (!testApp.HasValue)
-                        testApp = CurrentExecutionDirectory.Combine("Helper.CommandLine.exe");
-                    return testApp.Value;
-                }
-            }
-        }
+		internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new NUnitLogger(testName));
 
         protected async Task RunTest(Func<IEnumerator> testMethodToRun)
 		{
@@ -141,5 +36,16 @@ namespace BaseTests
 		{
 			return Task<T>.Factory.StartNew(method, state, CancellationToken.None, TaskCreationOptions.None, scheduler);
 		}
+
+        private SPath? testApp;
+        internal SPath TestApp
+        {
+            get
+            {
+                if (!testApp.HasValue)
+                    testApp = System.Reflection.Assembly.GetExecutingAssembly().Location.ToSPath().Parent.Combine("Helper.CommandLine.exe");
+                return testApp.Value;
+            }
+        }
     }
 }

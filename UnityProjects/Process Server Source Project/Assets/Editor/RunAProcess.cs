@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Threading;
+using UnityEngine;
 using UnityEditor;
 using Unity.Editor.ProcessServer;
 using Unity.Editor.Tasks;
@@ -11,22 +12,19 @@ public class RunAProcess : MonoBehaviour
         var processServer = ProcessServer.Get();
         processServer.Connect();
 
-        var process = new ProcessTask<string>(processServer.TaskManager, processServer.ProcessManager.DefaultProcessEnvironment, "git", "log", outputProcessor: new SimpleOutputProcessor())
-            .Configure(processServer.ProcessManager, workingDirectory: "d:/code/unity/unity");
-
-        //process.OnOutput += s => Debug.Log(s);
-
-        process.Start().FinallyInUI((success, ex, ret) => {
-            Debug.Log("Done in-process");
-        });
-
-        process = new ProcessTask<string>(processServer.TaskManager, processServer.ProcessManager.DefaultProcessEnvironment, "git", "log", outputProcessor: new SimpleOutputProcessor())
+        var process = new ProcessTask<string>(processServer.TaskManager, processServer.ProcessManager.DefaultProcessEnvironment,
+                "git", "log", outputProcessor: new SimpleOutputProcessor()) { Affinity = TaskAffinity.LongRunning }
             .Configure(processServer, workingDirectory: "d:/code/unity/unity");
 
         process.OnOutput += s => Debug.Log(s);
-        process.Start().FinallyInUI((success, ex, ret) => {
+        process.FinallyInUI((success, ex, ret) => {
             Debug.Log("Done out-of-process");
-        });
+            Debug.Log(ret);
+        }).Start();
 
+        new ActionTask(processServer.TaskManager, () => {
+            new ManualResetEventSlim().Wait(200); 
+            process.Stop();
+        }).Start();
     }
 }

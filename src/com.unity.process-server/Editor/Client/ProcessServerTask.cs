@@ -1,10 +1,8 @@
 ﻿namespace Unity.Editor.ProcessServer
 {
-    using System;
-    using System.IO;
     using System.Text;
     using Tasks;
-    using Extensions;
+    using Unity.Editor.ProcessServer.Internal.IO;
 
     public class ProcessManagerTask : DotNetProcessTask<int>
     {
@@ -12,7 +10,7 @@
             IProcessManager processManager,
             IEnvironment environment,
             IProcessServerConfiguration configuration)
-            : base(taskManager, processManager, configuration.ExecutablePath, CreateArguments(environment))
+            : base(taskManager, processManager, configuration.ExecutablePath, CreateArguments(environment), null)
 
         {
             Affinity = TaskAffinity.LongRunning;
@@ -23,9 +21,9 @@
         {
             var args = new StringBuilder();
             args.Append("-projectPath ");
-            args.Append(environment.UnityProjectPath.Quote());
+            args.Append(environment.UnityProjectPath.ToSPath().InQuotes());
             args.Append(" -unityPath ");
-            args.Append(environment.UnityApplicationContents.Quote());
+            args.Append(environment.UnityApplicationContents.ToSPath().InQuotes());
             return args.ToString();
         }
 

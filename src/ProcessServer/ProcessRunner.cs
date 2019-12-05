@@ -74,7 +74,7 @@
             var task = new ProcessTask<string>(taskManager, processEnvironment, executable, arguments, outputProcessor: outputProcessor)
                 .Configure(processManager, workingDir);
 
-            var startInfo = ProcessInfo.FromStartInfo(task.Process.StartInfo);
+            var startInfo = ProcessInfo.FromStartInfo(task.Wrapper.StartInfo);
 
             var id = startInfo.GetId();
             var process = new IpcProcess(id, startInfo, options);

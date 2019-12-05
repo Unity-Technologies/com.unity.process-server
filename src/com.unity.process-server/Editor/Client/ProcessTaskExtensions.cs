@@ -27,29 +27,4 @@
             Task.Factory.StartNew(action, state, token, TaskCreationOptions.None, scheduler);
         }
     }
-
-    namespace Extensions
-    {
-        public static class TaskExtensions
-        {
-            public static async Task<T> Timeout<T>(this Task<T> task, int timeout, string message, CancellationToken token = default)
-            {
-                var ret = await Task.WhenAny(task, Task.Delay(timeout, token));
-                if (ret != task)
-                    throw new TimeoutException(message);
-                return await task;
-            }
-        }
-
-        public static class StringExtensions
-        {
-            public static string Quote(this string str)
-            {
-                if (str == null) return "\"\"";
-                if (!str.StartsWith("\"")) str = "\"" + str;
-                if (!str.EndsWith("\"")) str += "\"";
-                return str;
-            }
-    }
-    }
 }
