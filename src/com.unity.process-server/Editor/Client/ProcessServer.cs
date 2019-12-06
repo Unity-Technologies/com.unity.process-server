@@ -46,15 +46,17 @@
 
         private IProcessManager localProcessManager;
         private RemoteProcessManager processManager;
+        private MainThreadSynchronizationContext ourContext;
 
-        public static IProcessServer Get(ITaskManager taskManager = null)
+        public static IProcessServer Get(ITaskManager taskManager = null,
+            IEnvironment environment = null,
+            IProcessServerConfiguration configuration = null)
         {
             if (instance == null)
             {
-                var inst = new ProcessServer(taskManager, TheEnvironment.instance.Environment, ApplicationConfiguration.Instance);
+                var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration ?? ApplicationConfiguration.Instance);
                 instance = inst;
             }
-            instance.EnsureInitialized();
             return instance.Connect();
         }
 
@@ -69,9 +71,9 @@
             Configuration = configuration;
 
             ownsTaskManager = taskManager == null;
-            
+
             if (ownsTaskManager)
-                taskManager = new TaskManager().Initialize();
+                taskManager = new TaskManager();
 
             TaskManager = taskManager;
             TaskManager.Token.Register(cts.Cancel);
@@ -114,7 +116,22 @@
         private void EnsureInitialized()
         {
             if (TaskManager.UIScheduler == null)
-                TaskManager.Initialize();
+            {
+                try
+                {
+                    TaskManager.Initialize();
+                }
+                catch
+                {
+                    if (ownsTaskManager)
+                    {
+                        ourContext = new MainThreadSynchronizationContext(TaskManager.Token);
+                        TaskManager.Initialize(ourContext);
+                    }
+                    else
+                        throw;
+                }
+            }
         }
 
         public void Stop()
@@ -124,6 +141,8 @@
 
         public IProcessServer Connect()
         {
+            EnsureInitialized();
+
             var port = Configuration.Port;
 
             int retries = 2;
@@ -197,7 +216,10 @@
             if (disposing)
             {
                 if (ownsTaskManager)
+                {
                     TaskManager?.Dispose();
+                    ourContext?.Dispose();
+                }
 
                 localProcessManager?.Dispose();
                 ProcessManager?.Dispose();
