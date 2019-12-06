@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿#if UNITY_EDITOR
+
+using System.Linq;
 using UnityEngine;
 using UnityEditorInternal;
 using System.IO;
@@ -119,3 +121,5 @@ namespace Unity.Editor.ProcessServer
         }
     }
 }
+
+#endif

@@ -1,9 +1,49 @@
 ﻿using System;
-using UnityEditor;
+
+#if UNITY_EDITOR
 using UnityEngine;
+using UnityEditor;
+#endif
 
 namespace Unity.Editor.ProcessServer
 {
+    using Internal.IO;
+#if !UNITY_EDITOR
+
+    using EditorStubs;
+    namespace EditorStubs
+    {
+        public class SerializeFieldAttribute : Attribute
+        {
+
+        }
+
+        public class ScriptableSingleton<T>
+            where T : class, new()
+        {
+            private static T _instance;
+            public static T instance => _instance ?? (_instance = new T());
+            public static T Instance => instance;
+
+            protected void Save(bool flush)
+            { }
+        }
+
+        public static class Application
+        {
+            public static string productName { get; } = "DefaultApplication";
+            public static string unityVersion { get; set; } = "2019.2.1f1";
+            public static string projectPath { get; set; }
+        }
+
+        public static class EditorApplication
+        {
+            public static string applicationPath { get; set; }
+            public static string applicationContentsPath { get; set; }
+        }
+    }
+#endif
+
     sealed class ApplicationCache : ScriptableSingleton<ApplicationCache>
     {
         [SerializeField] private bool firstRun = true;
@@ -71,8 +111,16 @@ namespace Unity.Editor.ProcessServer
         }
     }
 
+#if UNITY_EDITOR
     [Location("processserver/appsettings.yaml", LocationAttribute.Location.TempFolder)]
-    class ApplicationConfiguration : ScriptObjectSingleton<ApplicationConfiguration>, IProcessServerConfiguration
+#endif
+    class ApplicationConfiguration :
+#if UNITY_EDITOR
+        ScriptObjectSingleton<ApplicationConfiguration>
+#else
+        ScriptableSingleton<ApplicationConfiguration>
+#endif
+        , IProcessServerConfiguration
     {
         [SerializeField] private int port;
         [SerializeField] private string executablePath;

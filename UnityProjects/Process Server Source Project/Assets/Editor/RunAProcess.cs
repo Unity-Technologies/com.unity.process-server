@@ -13,8 +13,8 @@ public class RunAProcess : MonoBehaviour
         processServer.Connect();
 
         var process = new ProcessTask<string>(processServer.TaskManager, processServer.ProcessManager.DefaultProcessEnvironment,
-                "git", "log", outputProcessor: new SimpleOutputProcessor()) { Affinity = TaskAffinity.LongRunning }
-            .Configure(processServer, workingDirectory: "d:/code/unity/unity");
+                "git", "log", outputProcessor: new SimpleOutputProcessor())
+            .Configure(processServer.ProcessManager);
 
         process.OnOutput += s => Debug.Log(s);
         process.FinallyInUI((success, ex, ret) => {

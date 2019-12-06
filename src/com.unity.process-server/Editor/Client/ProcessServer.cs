@@ -89,7 +89,7 @@
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.quitting += () => {
                 Stop();
-                Completion.Task.Wait();
+                Completion.WaitOne(500);
                 Dispose();
             };
 #endif

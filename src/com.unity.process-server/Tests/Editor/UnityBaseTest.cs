@@ -1,12 +1,11 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
 
 namespace BaseTests
 {
     using System;
-    using Internal.IO;
+    using Unity.Editor.ProcessServer.Internal.IO;
 
     // Unity does not support async/await tests, but it does
     // have a special type of test with a [CustomUnityTest] attribute
@@ -19,28 +18,8 @@ namespace BaseTests
     { }
 
 
-    public partial class BaseTest : IDisposable
+    public partial class BaseTest
     {
-        private LogAdapterBase existingLogger;
-        private bool existingTracing;
-
-        internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new LogFacade(testName, new UnityLogAdapter(), false));
-
-        public BaseTest()
-        {
-            // set up the logger so it doesn't write exceptions to the unity log, the test runner doesn't like it
-            existingLogger = LogHelper.LogAdapter;
-            existingTracing = LogHelper.TracingEnabled;
-            LogHelper.TracingEnabled = false;
-            LogHelper.LogAdapter = new NullLogAdapter();
-        }
-
-        public void Dispose()
-        {
-            LogHelper.LogAdapter = existingLogger;
-            LogHelper.TracingEnabled = existingTracing;
-        }
-
         internal SPath? testApp;
 
         internal SPath TestApp

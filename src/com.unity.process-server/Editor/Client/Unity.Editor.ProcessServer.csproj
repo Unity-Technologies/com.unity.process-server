@@ -21,8 +21,6 @@
     <PackageReference Include="Unity.Editor.Tasks" Version="1.2.1" />
   </ItemGroup>
 
-  <Import Project="$(RootDir)common\unityreferences.targets" />
-
   <!-- package the sources and version stamp everything only when doing a full build -->
   <Import Project="$(RootDir)common\packaging.targets" Condition="'$(FullBuild)' == 'true'" />
   <ItemGroup Condition="'$(FullBuild)' == 'true'">

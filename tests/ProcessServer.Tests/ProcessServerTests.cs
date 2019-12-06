@@ -84,6 +84,37 @@ namespace BaseTests
         }
 
         [Test]
+        public async Task CanKeepDotNetProcessAlive()
+        {
+            using (var test = StartTest())
+            using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
+            {
+                processServer.Connect();
+
+                var ret = new DotNetProcessTask(test.TaskManager,
+                                    processServer.ProcessManager,
+                                    TestApp, "-s 1000");
+
+                ret.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
+                ret.OnStartProcess += _ => ret.Detach();
+
+                var restartCount = 0;
+                var restarted = new TaskCompletionSource<ProcessRestartReason>();
+
+                processServer.ProcessManager.OnProcessRestart += (sender, args) => {
+                    restartCount++;
+                    if (restartCount == 2)
+                        restarted.TrySetResult(args.Reason);
+                };
+
+                await ret.Start().Task.Timeout(1000, "Detach did not happen on time");
+
+                var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
+
+            }
+        }
+
+        [Test]
         public async Task Server_CanRestartProcess()
         {
             using (var test = StartTest())

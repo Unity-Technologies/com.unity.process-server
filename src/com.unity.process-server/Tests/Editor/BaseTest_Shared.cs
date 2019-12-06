@@ -3,16 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.Editor.Tasks;
 using Unity.Editor.ProcessServer.Internal.IO;
-using Unity.Editor.ProcessServer.Server;
 
 namespace BaseTests
 {
-    
+    using System.Runtime.CompilerServices;
+    using Unity.Editor.Tasks.Extensions;
+
     interface ILogging
     {
         bool TracingEnabled { get; set; }
@@ -108,7 +108,9 @@ namespace BaseTests
 		protected const int Timeout = 30000;
 		protected const int RandomSeed = 120938;
 
-		internal void StartTrackTime(Stopwatch watch, ILogging logger, string message = "")
+        internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new NUnitLogger(testName));
+
+        internal void StartTrackTime(Stopwatch watch, ILogging logger, string message = "")
 		{
 			if (!string.IsNullOrEmpty(message))
 				logger.Trace(message);

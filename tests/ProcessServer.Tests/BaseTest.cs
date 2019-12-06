@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Collections;
 using System.Threading;
-using Unity.Editor.Tasks.Logging;
 using Unity.Editor.Tasks;
 using System.Threading.Tasks;
 
@@ -14,8 +12,6 @@ namespace BaseTests
     public partial class BaseTest
 	{
 		public const bool TracingEnabled = false;
-
-		internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new NUnitLogger(testName));
 
         protected async Task RunTest(Func<IEnumerator> testMethodToRun)
 		{
