@@ -9,7 +9,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <AssemblyName>processserver</AssemblyName>
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
-    <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
+    <IsPackable>false</IsPackable>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
