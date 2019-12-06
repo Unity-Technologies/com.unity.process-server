@@ -18,7 +18,11 @@ publish_nuget:
       Pop-Location
 
   dependencies:
-  - .yamato/build.yml#build
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/test.yml#test_{{platform.name}}_{{editor.version}}
+    {% endfor %}
+    {% endfor %}
 
 publish_npm:
   name: Publish Npm
@@ -38,7 +42,11 @@ publish_npm:
     - for /f "delims=" %%d in ('dir /b "upm-ci~\packages\*.tgz"') do (call npm publish "upm-ci~\packages\%%d" --quiet --registry %PUBLISH_URL%)
 
   dependencies:
-  - .yamato/build.yml#build
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/test.yml#test_{{platform.name}}_{{editor.version}}
+    {% endfor %}
+    {% endfor %}
 
 
 publish_packman:
@@ -52,14 +60,28 @@ publish_packman:
   commands:
     - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
 {% for package in packages %}
-    - upm-ci package publish --package-path build\upm\{{ package.name }}
+    - upm-ci package publish --package-path build\packages\{{ package.name }}
 {% endfor %}
 
   dependencies:
-  - .yamato/build.yml#build
+    {% for editor in test_editors %}
+    {% for platform in test_platforms %}
+    - .yamato/test.yml#test_{{platform.name}}_{{editor.version}}
+    {% endfor %}
+    {% endfor %}
 
-publish_trigger:
+publish_artifactory:
   name: Publish to Artifactory
   dependencies:
     - .yamato/publish.yml#publish_nuget
     - .yamato/publish.yml#publish_npm
+
+publish_trigger:
+  name: Publish
+  dependencies:
+    - .yamato/publish.yml#publish_artifactory
+    - .yamato/publish.yml#publish_packman
+  triggers:
+    tags:
+      only:
+      - "/.*/"

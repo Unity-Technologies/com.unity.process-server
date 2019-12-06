@@ -11,15 +11,14 @@ build:
 
   commands:
     - powershell scripts\Get-Deps.ps1
-    - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
     - build.cmd
     - test.cmd
-    - pack.cmd -u
+    - pack.cmd
 
   artifacts:
     nuget:
       paths:
-        - "build/nuget/**/*.nupkg"
+        - "build/nuget/**/*nupkg"
         - "nuget.config"
     packman:
       paths:
@@ -33,4 +32,4 @@ build:
         - "tests/**/TestResults/*"
     sources:
       paths:
-        - "build/upm/**/*"
+        - "build/packages/**/*"

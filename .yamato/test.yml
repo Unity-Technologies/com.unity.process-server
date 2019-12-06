@@ -12,16 +12,30 @@ test_{{ platform.name }}_{{ editor.version }}:
   commands:
     - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
 {% for package in packages %}
-    - upm-ci package test --package-path build\upm\{{ package.name }} -u {{editor.version}}
+    - upm-ci package test --package-path build\packages\{{ package.name }} -u {{editor.version}}
 {% endfor %}
 
   dependencies:
     - .yamato/build.yml#build
 
   artifacts:
-    logs:
+    nuget:
       paths:
-        - "upm-ci~/test-results/**/*"
+        - "build/nuget/**/*nupkg"
+        - "nuget.config"
+    packman:
+      paths:
+        - "upm-ci~/**/*"
+    binaries:
+      paths:
+        - "build/bin/**/*"
+    tests:
+      paths:
+        - "build/tests/bin/**/*"
+        - "tests/**/TestResults/*"
+    sources:
+      paths:
+        - "build/packages/**/*"
 {% endfor %}
 {% endfor %}
 
@@ -38,9 +52,13 @@ test_trigger:
       - targets:
           only:
             - "master"
+            - "/v\\d+\\.\\d+.*/"
+            - "/release.*/v\\d+\\.\\d+.*/"
     branches:
       only:
       - "master"
+      - "/v\\d+\\.\\d+.*/"
+      - "/release.*/v\\d+\\.\\d+.*/"
     tags:
       only:
       - "/.*/"
