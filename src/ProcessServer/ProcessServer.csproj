@@ -24,7 +24,7 @@
     <PackageReference Include="YamlDotNet" Version="8.0.0" />
     <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
     <PackageReference Include="Unity.Ipc.Hosted" Version="1.0.21-preview" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.1-g41ed23840e" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
