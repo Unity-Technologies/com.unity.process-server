@@ -28,8 +28,15 @@
 
     public interface IProcessServerConfiguration
     {
+        /// <summary>
+        /// Pass this to <see cref="ProcessServer.Get(ITaskManager, IEnvironment, IProcessServerConfiguration)"/>
+        /// so the client can read and write the port information when connecting.
+        /// </summary>
         int Port { get; set; }
-        string ExecutablePath { get; set; }
+        /// <summary>
+        /// The path to the process server executable.
+        /// </summary>
+        string ExecutablePath { get; }
     }
 
     public class ProcessServer : IProcessServer

@@ -92,7 +92,7 @@
             return Configure(processTask, startInfo, options);
         }
 
-        public T Configure<T>(T processTask, string workingDirectory = null) where T : IProcessTask => Configure(processTask, workingDirectory);
+        public T Configure<T>(T processTask, string workingDirectory = null) where T : IProcessTask => Configure(processTask, default, workingDirectory);
 
         public T Configure<T>(T processTask, ProcessStartInfo startInfo) where T : IProcessTask => Configure(processTask, startInfo, default);
 

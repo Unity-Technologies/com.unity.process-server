@@ -10,7 +10,7 @@
             IProcessManager processManager,
             IEnvironment environment,
             IProcessServerConfiguration configuration)
-            : base(taskManager, processManager, configuration.ExecutablePath, CreateArguments(environment), null)
+            : base(taskManager, processManager, configuration.ExecutablePath, CreateArguments(environment), outputProcessor: null)
 
         {
             Affinity = TaskAffinity.LongRunning;

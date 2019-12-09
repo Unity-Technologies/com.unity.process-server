@@ -10,8 +10,7 @@ using Unity.Editor.Tasks.Extensions;
 using System.Diagnostics;
 
 namespace BaseTests
-{
-
+{ 
     [TestFixture]
     public class ProcessServerTests : BaseTest
     {
@@ -69,12 +68,16 @@ namespace BaseTests
             {
                 processServer.Connect();
 
-                var ret = await new ProcessTask<string>(test.TaskManager,
+                var task = new DotNetProcessTask<string>(test.TaskManager,
                                     test.ProcessManager.DefaultProcessEnvironment,
+                                    test.Environment,
                                     TestApp, "-d done",
-                                    outputProcessor: new FirstNonNullLineOutputProcessor<string>())
-                                .Configure(processServer.ProcessManager)
-                                .StartAwait().Timeout(10000, "The process did not finish on time");
+                                    outputProcessor: new FirstNonNullLineOutputProcessor<string>());
+
+                task.Configure(processServer.ProcessManager);
+                task.OnOutput += s => test.Logger.Info(s);
+                var ret = await task.StartAwait().Timeout(10000, "The process did not finish on time");
+
 
                 Assert.AreEqual("done", ret);
 
@@ -93,7 +96,7 @@ namespace BaseTests
 
                 var ret = new DotNetProcessTask(test.TaskManager,
                                     processServer.ProcessManager,
-                                    TestApp, "-s 1000");
+                                    TestApp, "-s 200");
 
                 ret.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
                 ret.OnStartProcess += _ => ret.Detach();
@@ -107,9 +110,9 @@ namespace BaseTests
                         restarted.TrySetResult(args.Reason);
                 };
 
-                await ret.Start().Task.Timeout(1000, "Detach did not happen on time");
+                await ret.StartAwait().Timeout(2000, "Detach did not happen on time");
 
-                var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
+                var reason = await restarted.Task.Timeout(1000, "Restart did not happen on time");
 
             }
         }
@@ -151,8 +154,8 @@ namespace BaseTests
                 {
                     var task = new ProcessTask<string>(test.TaskManager,
                                 test.ProcessManager.DefaultProcessEnvironment,
-                                TestApp, "-s 100", new SimpleOutputProcessor())
-                        .Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
+                                TestApp, "-s 100", new SimpleOutputProcessor());
+                    task.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
 
                     var restartCount = 0;
 

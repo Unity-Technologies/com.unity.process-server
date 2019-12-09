@@ -18,7 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
     <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.1" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.3-ga7a72d23e6" />
   </ItemGroup>
 
   <!-- package the sources and version stamp everything only when doing a full build -->
