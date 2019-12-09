@@ -10,7 +10,12 @@ using Unity.Editor.Tasks.Extensions;
 using System.Diagnostics;
 
 namespace BaseTests
-{ 
+{
+    using System;
+    using System.Threading;
+    using Microsoft.Extensions.Logging;
+    using Unity.Editor.ProcessServer.Server;
+
     [TestFixture]
     public class ProcessServerTests : BaseTest
     {
@@ -33,17 +38,14 @@ namespace BaseTests
         {
             using (var test = StartTest())
             {
-                using (var task = new ProcessManagerTask(test.TaskManager, test.ProcessManager, test.Environment, new ServerConfiguration(TestAssemblyLocation)))
-                {
-                    var port = await task.StartAwait();
-                    Assert.Greater(port, 40000);
 
-                    var id = task.ProcessId;
-                    var p = Process.GetProcessById(id);
-                    p.Kill();
-                    p.WaitForExit();
-                    p.Close();
-                }
+                var task = new IpcServerTask(test.TaskManager, test.ProcessManager, new ServerConfiguration(TestAssemblyLocation), CancellationToken.None)
+                    .RegisterRemoteTarget<IServer>();
+
+                var client = await task.StartAwait();
+                Assert.Greater(client.Configuration.Port, 40000);
+
+                await client.GetRemoteTarget<IServer>().Stop();
             }
         }
 
@@ -53,8 +55,8 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
-                processServer.Stop();
+                await processServer.Connect();
+                await processServer.Shutdown();
                 var shutdown = processServer.Completion.WaitOne(1000);
                 Assert.True(shutdown, "Server did not shutdown on time");
             }
@@ -66,8 +68,6 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString()) ))
             {
-                processServer.Connect();
-
                 var task = new DotNetProcessTask<string>(test.TaskManager,
                                     test.ProcessManager.DefaultProcessEnvironment,
                                     test.Environment,
@@ -80,9 +80,6 @@ namespace BaseTests
 
 
                 Assert.AreEqual("done", ret);
-
-                processServer.Stop();
-                Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
             }
         }
 
@@ -92,8 +89,6 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
-
                 var ret = new DotNetProcessTask(test.TaskManager,
                                     processServer.ProcessManager,
                                     TestApp, "-s 200");
@@ -113,7 +108,6 @@ namespace BaseTests
                 await ret.StartAwait().Timeout(2000, "Detach did not happen on time");
 
                 var reason = await restarted.Task.Timeout(1000, "Restart did not happen on time");
-
             }
         }
 
@@ -122,23 +116,25 @@ namespace BaseTests
         {
             using (var test = StartTest())
             {
-                var runner = new Unity.Editor.ProcessServer.Server.ProcessRunner(test.TaskManager, test.ProcessManager,
-                    test.ProcessManager.DefaultProcessEnvironment, test.Environment, null, null);
+                using (var runner = new ProcessRunner(test.TaskManager, test.ProcessManager,
+                    test.ProcessManager.DefaultProcessEnvironment, Substitute.For<ILogger<ProcessRunner>>()))
+                {
 
-                var notifications = Substitute.For<IServerNotifications>();
-                var client = Substitute.For<IRequestContext>();
-                client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
+                    var notifications = Substitute.For<IServerNotifications>();
+                    var client = Substitute.For<IRequestContext>();
+                    client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
 
-                string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
+                    string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
 
-                var task = runner.RunProcess(id);
+                    var task = runner.RunProcess(id);
 
-                await task.Task;
+                    await task.Task;
 
-                await Task.Delay(100);
-                await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
+                    await Task.Delay(100);
+                    await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
 
-                await runner.Stop(id).Task;                
+                    await runner.StopProcess(id).Task;
+                }
             }
         }
 
@@ -148,67 +144,44 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
+                var task = new ProcessTask<string>(test.TaskManager,
+                            test.ProcessManager.DefaultProcessEnvironment,
+                            TestApp, "-s 100", new SimpleOutputProcessor());
+                task.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
 
-                try
-                {
-                    var task = new ProcessTask<string>(test.TaskManager,
-                                test.ProcessManager.DefaultProcessEnvironment,
-                                TestApp, "-s 100", new SimpleOutputProcessor());
-                    task.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
+                var restartCount = 0;
 
-                    var restartCount = 0;
+                var restarted = new TaskCompletionSource<ProcessRestartReason>();
+                processServer.ProcessManager.OnProcessRestart += (sender, args) => {
+                    restartCount++;
+                    if (restartCount == 2)
+                        restarted.TrySetResult(args.Reason);
+                };
 
-                    var restarted = new TaskCompletionSource<ProcessRestartReason>();
-                    processServer.ProcessManager.OnProcessRestart += (sender, args) => {
-                        restartCount++;
-                        if (restartCount == 2)
-                            restarted.TrySetResult(args.Reason);
-                    };
+                task.Start();
 
-                    task.Start();
+                var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
 
-                    var reason = await restarted.Task.Timeout(60000, "Restart did not happen on time");
+                task.Detach();
 
-                    task.Detach();
-
-                    Assert.AreEqual(ProcessRestartReason.KeepAlive, reason);
-                }
-                finally
-                {
-                    processServer.Stop();
-                    Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
-                }
+                Assert.AreEqual(ProcessRestartReason.KeepAlive, reason);
             }
         }
 
-        class TestProcessServer : ProcessServer
+        class TestProcessServer : Unity.Editor.ProcessServer.ProcessServer, IDisposable
         {
-            private BaseProcessWrapper process;
-
             public TestProcessServer(ITaskManager taskManager,
                 IEnvironment environment,
                 IProcessServerConfiguration configuration)
                 : base(taskManager, environment, configuration)
             {}
 
-            protected override ITask<int> RunProcessServer(string pathToServerExecutable)
-            {
-                var task = base.RunProcessServer(pathToServerExecutable);
-                process = ((IProcessTask)task).Wrapper;
-                return task;
-            }
-
             protected override void Dispose(bool disposing)
             {
                 base.Dispose(disposing);
                 try
                 {
-                    if (!process.HasExited)
-                    {
-                        process.Stop();
-                        process.Dispose();
-                    }
+                    ShutdownSync();
                 }
                 catch
                 {}

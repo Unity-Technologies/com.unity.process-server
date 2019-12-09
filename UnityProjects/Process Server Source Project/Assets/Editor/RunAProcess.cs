@@ -3,28 +3,36 @@ using UnityEngine;
 using UnityEditor;
 using Unity.Editor.ProcessServer;
 using Unity.Editor.Tasks;
+using System.IO;
+using Unity.Editor.Tasks.Extensions;
 
 public class RunAProcess : MonoBehaviour
 {
+    [MenuItem("Process Server/Stop process server")]
+    public static void Menu_Stop()
+    {
+        ProcessServer.Stop();
+    }
+
     [MenuItem("Process Server/Run Process")]
     public static void Menu_RunProcess()
     {
         var processServer = ProcessServer.Get();
-        processServer.Connect();
 
-        var process = new ProcessTask<string>(processServer.TaskManager, processServer.ProcessManager.DefaultProcessEnvironment,
-                "git", "log", outputProcessor: new SimpleOutputProcessor())
-            .Configure(processServer.ProcessManager);
+        Debug.Log("Running out-of-process");
+        var testApp = Path.GetFullPath("Packages/com.unity.process-server/Tests/Helpers~/Helper.CommandLine.exe");
 
-        process.OnOutput += s => Debug.Log(s);
-        process.FinallyInUI((success, ex, ret) => {
-            Debug.Log("Done out-of-process");
-            Debug.Log(ret);
+        var expectedResult = "result!";
+
+        var process = new DotNetProcessTask(processServer.TaskManager, processServer.ProcessManager,
+                testApp, "-d " + expectedResult.InQuotes());
+
+        process.Finally((success, ex, ret) => {
+            if (!success)
+                Debug.LogException(ex);
+            else
+                Debug.Log($"done! got {ret}");
         }).Start();
 
-        new ActionTask(processServer.TaskManager, () => {
-            new ManualResetEventSlim().Wait(200); 
-            process.Stop();
-        }).Start();
     }
 }

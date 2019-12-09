@@ -27,6 +27,7 @@ namespace Unity.Editor.ProcessServer.Interfaces
         KeepAlive
     }
 
+    [Serializable]
     public struct ProcessInfo
     {
         public string WorkingDirectory;
@@ -101,6 +102,7 @@ namespace Unity.Editor.ProcessServer.Interfaces
         }
     }
 
+    [Serializable]
     public struct ProcessOptions
     {
         public MonitorOptions MonitorOptions;
@@ -138,12 +140,13 @@ namespace Unity.Editor.ProcessServer.Interfaces
 
     public interface IProcessNotifications
     {
-        Task ProcessOnStart(IpcProcess process);
-        Task ProcessOnEnd(IpcProcess process, bool success, Exception ex, string errors);
-        Task ProcessOnOutput(IpcProcess process, string line);
-        Task ProcessOnError(IpcProcess process, string errors);
+        Task ProcessOnStart(IpcProcessEventArgs args);
+        Task ProcessOnEnd(IpcProcessEndEventArgs args);
+        Task ProcessOnOutput(IpcProcessOutputEventArgs args);
+        Task ProcessOnError(IpcProcessErrorEventArgs args);
     }
 
+    [Serializable]
     public struct IpcProcess
     {
         public string Id;
@@ -158,56 +161,70 @@ namespace Unity.Editor.ProcessServer.Interfaces
         }
     }
 
+    [Serializable]
     public struct IpcProcessEventArgs
     {
         public IpcProcess Process;
 
-        public IpcProcessEventArgs(IpcProcess process)
+        public static IpcProcessEventArgs Get(IpcProcess process)
         {
-            Process = process;
+            return new IpcProcessEventArgs {
+                Process = process,
+            };
         }
     }
 
+    [Serializable]
     public struct IpcProcessErrorEventArgs
     {
         public IpcProcess Process;
         public string Errors;
 
-        public IpcProcessErrorEventArgs(IpcProcess process, string errors)
+        public static IpcProcessErrorEventArgs Get(IpcProcess process, string errors)
         {
-            Process = process;
-            Errors = errors;
+            return new IpcProcessErrorEventArgs {
+                Process = process,
+                Errors = errors,
+            };
         }
     }
 
+    [Serializable]
     public struct IpcProcessOutputEventArgs
     {
         public IpcProcess Process;
         public string Data;
 
-        public IpcProcessOutputEventArgs(IpcProcess process, string data)
+        public static IpcProcessOutputEventArgs Get(IpcProcess process, string data)
         {
-            Process = process;
-            Data = data;
+            return new IpcProcessOutputEventArgs { Process = process, Data = data, };
         }
     }
 
+    [Serializable]
     public struct IpcProcessEndEventArgs
     {
         public IpcProcess Process;
         public bool Successful;
-        public Exception Exception;
+        public string Exception;
         public string Errors;
+        public int ErrorCode;
+        public string ExceptionType;
 
-        public IpcProcessEndEventArgs(IpcProcess process, bool success, Exception exception, string errors)
+        public static IpcProcessEndEventArgs Get(IpcProcess process, bool success, string exception, int errorCode, string exceptionType, string errors)
         {
-            Process = process;
-            Successful = success;
-            Exception = exception;
-            Errors = errors;
+            return new IpcProcessEndEventArgs {
+                Process = process,
+                Successful = success,
+                Exception = exception,
+                Errors = errors,
+                ErrorCode = errorCode,
+                ExceptionType = exceptionType,
+            };
         }
     }
 
+    [Serializable]
     public struct IpcProcessRestartEventArgs
     {
         public IpcProcess Process;

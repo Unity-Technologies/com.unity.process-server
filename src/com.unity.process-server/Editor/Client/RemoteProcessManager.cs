@@ -9,6 +9,7 @@
     using System.Threading.Tasks;
     using Interfaces;
     using Tasks;
+    using Tasks.Extensions;
     using Unity.Editor.ProcessServer.Internal.IO;
 
     public interface IRemoteProcessManager : IProcessManager
@@ -43,20 +44,16 @@
     {
         private readonly Dictionary<string, SynchronizationContextTaskScheduler> processes = new Dictionary<string, SynchronizationContextTaskScheduler>();
         private readonly Dictionary<string, RemoteProcessWrapper> wrappers = new Dictionary<string, RemoteProcessWrapper>();
-        private readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private IProcessRunner runner;
+        private readonly CancellationTokenSource cts;
+        private readonly IProcessServer server;
         public event EventHandler<IpcProcessRestartEventArgs> OnProcessRestart;
 
-        public RemoteProcessManager(IProcessEnvironment environment, CancellationToken token)
+        public RemoteProcessManager(IProcessServer server, IProcessEnvironment environment, CancellationToken token)
         {
-            token.Register(cts.Cancel);
+            cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            this.server = server;
             DefaultProcessEnvironment = environment;
             ProcessNotifications = new Notifications(this);
-        }
-
-        public void ConnectToServer(IProcessRunner processRunner)
-        {
-            this.runner = processRunner;
         }
 
         public T Configure<T>(T processTask, ProcessStartInfo startInfo, ProcessOptions options = default) where T : IProcessTask
@@ -100,11 +97,7 @@
             Action onStart, Action onEnd, Action<Exception, string> onError,
             CancellationToken token)
         {
-            if (runner == null)
-            {
-                throw new InvalidOperationException("runner is not set on RemoteProcessManager. Did you forget to call ConnectToServer(runner)?");
-            }
-            return new RemoteProcessWrapper(runner, startInfo, outputProcessor, onStart, onEnd, onError, token);
+            return new RemoteProcessWrapper(server, startInfo, outputProcessor, onStart, onEnd, onError, token);
         }
 
         public void Stop()
@@ -112,32 +105,32 @@
             Dispose();
         }
 
-        private void RaiseProcessOnStart(IpcProcess process)
+        private void RaiseProcessOnStart(IpcProcessEventArgs args)
         {
-            if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
-                throw new InvalidOperationException($"OnStart for process {process.Id} was called but there's no record of it in the process list.");
+            if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
+                throw new InvalidOperationException($"OnStart for process {args.Process.Id} was called but there's no record of it in the process list.");
 
             scheduler.Schedule(s => wrapper.OnProcessStart(), null, cts.Token);
         }
 
-        private void RaiseOnProcessEnd(IpcProcess process, bool success, Exception ex, string errors)
+        private void RaiseOnProcessEnd(IpcProcessEndEventArgs args)
         {
-            if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
-                throw new InvalidOperationException($"OnEnd for process {process.Id} was called but there's no record of it in the process list.");
+            if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
+                throw new InvalidOperationException($"OnEnd for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            var task = new Task(s => wrapper.OnProcessEnd((IpcProcessEndEventArgs)s), new IpcProcessEndEventArgs(process, success, ex, errors),
+            var task = new Task(s => wrapper.OnProcessEnd((IpcProcessEndEventArgs)s), args,
                 cts.Token, TaskCreationOptions.None);
 
             task.ContinueWith((_, __) => {
                 // process is done and it won't be restarted, cleanup
-                if (process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
+                if (args.Process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
                 {
                     lock (processes)
                     {
-                        if (wrappers.ContainsKey(process.Id))
+                        if (wrappers.ContainsKey(args.Process.Id))
                         {
-                            processes.Remove(process.Id);
-                            wrappers.Remove(process.Id);
+                            processes.Remove(args.Process.Id);
+                            wrappers.Remove(args.Process.Id);
                             scheduler.Dispose();
                             ((ThreadSynchronizationContext)scheduler.Context).Dispose();
                         }
@@ -147,26 +140,26 @@
             task.Start(scheduler);
         }
 
-        private void RaiseProcessOnError(IpcProcess process, string errors)
+        private void RaiseProcessOnError(IpcProcessErrorEventArgs args)
         {
-            if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
-                throw new InvalidOperationException($"OnError for process {process.Id} was called but there's no record of it in the process list.");
+            if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
+                throw new InvalidOperationException($"OnError for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            scheduler.Schedule(s => wrapper.OnProcessError((IpcProcessErrorEventArgs)s), new IpcProcessErrorEventArgs(process, errors), cts.Token);
+            scheduler.Schedule(s => wrapper.OnProcessError((IpcProcessErrorEventArgs)s), args, cts.Token);
         }
 
-        private void RaiseProcessOnOutput(IpcProcess process, string line)
+        private void RaiseProcessOnOutput(IpcProcessOutputEventArgs args)
         {
-            if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
-                throw new InvalidOperationException($"OnError for process {process.Id} but there's no record of it in the process list.");
+            if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
+                throw new InvalidOperationException($"OnOutput for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            scheduler.Schedule(s => wrapper.OnProcessOutput((IpcProcessOutputEventArgs)s), new IpcProcessOutputEventArgs(process, line), cts.Token);
+            scheduler.Schedule(s => wrapper.OnProcessOutput((IpcProcessOutputEventArgs)s), args, cts.Token);
         }
 
         internal void RaiseProcessRestart(IpcProcess process, ProcessRestartReason reason)
         {
             if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
-                throw new InvalidOperationException($"OnRestart for process {process.Id} but there's no record of it in the process list.");
+                throw new InvalidOperationException($"OnRestart for process {process.Id} was called but there's no record of it in the process list.");
 
             scheduler.Schedule(s => OnProcessRestart?.Invoke(this, (IpcProcessRestartEventArgs)s), new IpcProcessRestartEventArgs(process, reason), cts.Token);
         }
@@ -217,15 +210,29 @@
                 this.manager = manager;
             }
 
-            public async Task ProcessOnEnd(IpcProcess process, bool success, Exception ex, string errors) =>
-                manager.RaiseOnProcessEnd(process, success, ex, errors);
+            public Task ProcessOnEnd(IpcProcessEndEventArgs args)
+            {
+                manager.RaiseOnProcessEnd(args);
+                return Task.CompletedTask;
+            }
 
-            public async Task ProcessOnError(IpcProcess process, string errors) => manager.RaiseProcessOnError(process, errors);
+            public Task ProcessOnError(IpcProcessErrorEventArgs args)
+            {
+                manager.RaiseProcessOnError(args);
+                return Task.CompletedTask;
+            }
 
-            public async Task ProcessOnOutput(IpcProcess process, string line) =>
-                manager.RaiseProcessOnOutput(process, line);
+            public Task ProcessOnOutput(IpcProcessOutputEventArgs args)
+            {
+                manager.RaiseProcessOnOutput(args);
+                return Task.CompletedTask;
+            }
 
-            public async Task ProcessOnStart(IpcProcess process) => manager.RaiseProcessOnStart(process);
+            public Task ProcessOnStart(IpcProcessEventArgs args)
+            {
+                manager.RaiseProcessOnStart(args);
+                return Task.CompletedTask;
+            }
         }
     }
 }

@@ -3,6 +3,7 @@
     <TargetFramework>net471</TargetFramework>
     <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RootDir>
     <OutputType>Exe</OutputType>
+    <PublishTo>$(RepoRoot)build\packages\</PublishTo>
     <PackageSource>src\</PackageSource>
     <PackageName>com.unity.process-server</PackageName>
     <PackageSubFolder>\Server~\</PackageSubFolder>
@@ -12,6 +13,10 @@
     <IsPackable>false</IsPackable>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(RootDir)\common\**" Link="common\%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.0.1" />
@@ -24,7 +29,7 @@
     <PackageReference Include="YamlDotNet" Version="8.0.0" />
     <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
     <PackageReference Include="Unity.Ipc.Hosted" Version="1.0.21-preview" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.3-ga7a72d23e6" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.8" />
   </ItemGroup>
 
   <ItemGroup>

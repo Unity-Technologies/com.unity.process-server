@@ -6,6 +6,6 @@
       "enabled": true
     }
   },
-  "pathFilters": ["./", "../Directory.Build.props", "/Directory.build.props", "/icon.png", ":/common", ":/extras/com.unity.process-server" ],
+  "pathFilters": [":/src/com.unity.process-server", "../Directory.Build.props", "/icon.png", ":/extras/com.unity.process-server", ":/common", ":^/src/com.unity.process-server/Tests", ":^/src/com.unity.process-server/CHANGELOG.md" ],
   "inherit": true
 }
