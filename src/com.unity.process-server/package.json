@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "com.unity.ipc": "1.0.21-preview",
-    "com.unity.editor.tasks": "1.2.1"
+    "com.unity.editor.tasks": "1.2.7"
   }
 }

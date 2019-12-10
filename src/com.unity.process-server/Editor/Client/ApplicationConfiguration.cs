@@ -125,6 +125,8 @@ namespace Unity.Editor.ProcessServer
         [SerializeField] private int port;
         [SerializeField] private string executablePath;
 
+        private const string ProcessExecutable = "Packages/com.unity.process-server/Server~/processserver.exe";
+
         public int Port
         {
             get => port;
@@ -144,7 +146,7 @@ namespace Unity.Editor.ProcessServer
             {
                 if (string.IsNullOrEmpty(executablePath))
                 {
-                    ExecutablePath = System.IO.Path.GetFullPath("Packages/com.unity.process-server/Server~/processserver.exe");
+                    ExecutablePath = System.IO.Path.GetFullPath(ProcessExecutable);
                 }
                 return executablePath;
             }

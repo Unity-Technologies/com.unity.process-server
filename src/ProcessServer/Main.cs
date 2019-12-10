@@ -22,7 +22,7 @@ namespace Unity.Editor.ProcessServer.Server
         public async static Task<int> Main(string[] args)
         {
             // monitoring when the ipc host shuts down
-            var exiting = new CancellationTokenSource();
+            var exiting = new ManualResetEventSlim();
 
             var configuration = GetConfiguration(args);
 
@@ -46,14 +46,14 @@ namespace Unity.Editor.ProcessServer.Server
             var host = new IpcHostedServer(configuration)
                        .AddRemoteProxy<IServerNotifications>()
                        .AddRemoteProxy<IProcessNotifications>()
-                       .AddLocalTarget<ProcessServer>()
-                       .AddLocalTarget<ProcessRunner>()
-                       .AddLocalScoped<ProcessRunnerImplementation>()
+                       .AddLocalTarget<ProcessServer.Implementation>()
+                       .AddLocalScoped<ProcessRunner.Implementation>()
                        ;
 
             host.Stopping(s => {
-                    s.GetService<ProcessServer>().NotifyClients(NotificationType.Shutdown);
-                    exiting.Cancel();
+                    s.GetService<ProcessRunner>().Shutdown();
+                    s.GetService<ProcessServer>().Shutdown();
+                    exiting.Set();
                 })
                 .ClientConnecting(s => {
 
@@ -61,7 +61,10 @@ namespace Unity.Editor.ProcessServer.Server
                     s.GetService<ProcessServer>().ClientConnecting(s.GetRequestContext());
 
                 })
-                .ClientDisconnecting((s, disconnected) => { s.GetService<ProcessServer>().ClientDisconnecting(s.GetRequestContext()); });
+                .ClientDisconnecting((s, disconnected) => {
+                    s.GetService<ProcessRunner>().ClientDisconnecting(s.GetRequestContext());
+                    s.GetService<ProcessServer>().ClientDisconnecting(s.GetRequestContext());
+                });
 
             // set up a logger
             var logLevelSwitch = new LoggingLevelSwitch { MinimumLevel = LogEventLevel.Debug };
@@ -77,6 +80,8 @@ namespace Unity.Editor.ProcessServer.Server
                 coll.AddSingleton<IEnvironment>(environment);
                 coll.AddSingleton<IProcessEnvironment>(s => s.GetService<IProcessManager>().DefaultProcessEnvironment);
                 coll.AddSingleton<IProcessManager, ProcessManager>();
+                coll.AddSingleton<ProcessRunner>();
+                coll.AddSingleton<ProcessServer>();
 
                 // register the log switch so it can be retrieved and changed by any code
                 coll.AddSingleton(logLevelSwitch);
@@ -88,10 +93,13 @@ namespace Unity.Editor.ProcessServer.Server
 
             Console.WriteLine($"Port:{host.Ipc.Configuration.Port}");
 
-            await host.Run();
+            try
+            {
+                await host.Run();
+            } catch {}
 
             // wait until all stop events have completed
-            exiting.Token.WaitHandle.WaitOne();
+            exiting.Wait();
 
             return 0;
         }

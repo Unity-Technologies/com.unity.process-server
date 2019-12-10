@@ -1,21 +1,17 @@
 ﻿namespace Unity.Editor.ProcessServer
 {
     using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Linq;
-    using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
     using Interfaces;
     using Ipc;
     using Tasks;
-    using Unity.Editor.ProcessServer.Internal.IO;
     using Unity.Editor.Tasks.Extensions;
 
-    public interface IProcessServer : IDisposable
+    public interface IProcessServer
     {
-        IProcessServer Connect();
+        Task<IProcessServer> Connect();
+        void Stop();
 
         IServer Server { get; }
         IProcessRunner ProcessRunner { get; }
@@ -54,26 +50,28 @@
         private IProcessManager localProcessManager;
         private RemoteProcessManager processManager;
         private MainThreadSynchronizationContext ourContext;
+        private bool shuttingDown;
 
-        public static IProcessServer Get(ITaskManager taskManager = null,
+        public static async Task<IProcessServer> Get(ITaskManager taskManager = null,
             IEnvironment environment = null,
             IProcessServerConfiguration configuration = null)
         {
+            if (instance != null && instance.disposed)
+            {
+                instance = null;
+            }
             if (instance == null)
             {
                 var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration ?? ApplicationConfiguration.Instance);
                 instance = inst;
             }
-            return instance.Connect();
+            return await instance.Connect();
         }
 
         public ProcessServer(ITaskManager taskManager,
             IEnvironment environment,
-            IProcessServerConfiguration configuration,
-            IProcessEnvironment processEnvironment = null)
+            IProcessServerConfiguration configuration)
         {
-            cts.Token.Register(Dispose);
-
             Environment = environment;
             Configuration = configuration;
 
@@ -83,40 +81,85 @@
                 taskManager = new TaskManager();
 
             TaskManager = taskManager;
-            TaskManager.Token.Register(cts.Cancel);
+            TaskManager.Token.Register(Shutdown);
 
-            if (processEnvironment == null)
-            {
-                localProcessManager = new ProcessManager(Environment);
-                processEnvironment = localProcessManager.DefaultProcessEnvironment;
-            }
-
-            processManager = new RemoteProcessManager(processEnvironment, cts.Token);
+            localProcessManager = new ProcessManager(Environment);
+            processManager = new RemoteProcessManager(localProcessManager.DefaultProcessEnvironment, cts.Token);
             notifications = new ServerNotifications(this);
 
-            
+
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.quitting += () => {
-                Stop();
-                Completion.WaitOne(500);
-                Dispose();
-            };
+            UnityEditor.EditorApplication.quitting += Stop;
 #endif
+        }
+
+        public void Stop()
+        {
+            if (disposed) return;
+            Shutdown();
+            Completion.WaitOne(500);
+        }
+
+        public async Task<IProcessServer> Connect()
+        {
+            if (disposed || shuttingDown) return null;
+
+            EnsureInitialized();
+
+            if (ipcClient != null)
+            {
+                return this;
+            }
+
+            ipcClient = await SetupIpcTask().StartAwait();
+
+            ipcClient.Disconnected(e => {
+                processManager.ConnectToServer(null);
+                var c = ipcClient;
+                ipcClient = null;
+                if (disposed || shuttingDown) return;
+
+                new ActionTask<IpcClient>(TaskManager, cts.Token, client => client.Dispose()) { PreviousResult = c, Affinity = TaskAffinity.None }
+                    .Then(SetupIpcTask())
+                    .Then(x => ipcClient = x, TaskAffinity.None)
+                    .Start();
+            });
+
+            processManager.ConnectToServer(ipcClient.GetRemoteTarget<IProcessRunner>());
+            Configuration.Port = ipcClient.Configuration.Port;
+
+            return this;
+        }
+
+        private IpcServerTask SetupIpcTask()
+        {
+            return new IpcServerTask(TaskManager, localProcessManager,
+                                       localProcessManager.DefaultProcessEnvironment,
+                                       Environment, Configuration, cts.Token) { Affinity = TaskAffinity.None }
+                                   .RegisterRemoteTarget<IServer>()
+                                   .RegisterRemoteTarget<IProcessRunner>()
+                                   .RegisterLocalTarget(notifications)
+                                   .RegisterLocalTarget(processManager.ProcessNotifications);
         }
 
         private void Shutdown()
         {
+            if (shuttingDown)
+            {
+                Completion.WaitOne(500);
+                return;
+            }
+            shuttingDown = true;
+
             new Thread(() => {
                 try
                 {
                     Server.Stop().FireAndForget();
-                    var ret = stopSignal.Wait(300);
-                    Dispose();
+                    stopSignal.Wait(300);
                 }
-                finally
-                {
-                    completionHandle.Set();
-                }
+                catch {}
+                cts.Cancel();
+                Dispose();
             }).Start();
         }
 
@@ -141,71 +184,6 @@
             }
         }
 
-        public void Stop()
-        {
-            Shutdown();
-        }
-
-        public IProcessServer Connect()
-        {
-            EnsureInitialized();
-
-            var port = Configuration.Port;
-
-            int retries = 2;
-
-            while (ipcClient == null && retries > 0)
-            {
-                try
-                {
-                    var task = new TPLTask<IpcClient>(TaskManager, async () =>
-                        {
-                            // we don't know where the server is, start a new one
-                            if (port == 0)
-                            {
-                                port = RunProcessServer(Configuration.ExecutablePath).RunSynchronously();
-                            }
-
-                            return await ConnectToServer(port);
-                        });
-
-                    task.StartAwait().Wait(cts.Token);
-                    ipcClient = task.Result;
-                }
-                catch
-                {
-                    // can't connect to server, try launching it again
-                    port = 0;
-                    retries--;
-                    ipcClient = null;
-                }
-            }
-
-            if (ipcClient == null)
-                throw new NotReadyException("Could not connect to process server.");
-            Configuration.Port = port;
-            processManager.ConnectToServer(ipcClient.GetRemoteTarget<IProcessRunner>());
-            return this;
-        }
-
-        private async Task<IpcClient> ConnectToServer(int port)
-        {
-            var client = new IpcClient(new Configuration { Port = port }, cts.Token);
-            client.RegisterRemoteTarget<IServer>();
-            client.RegisterRemoteTarget<IProcessRunner>();
-            client.RegisterLocalTarget(notifications);
-            client.RegisterLocalTarget(processManager.ProcessNotifications);
-            await client.Start();
-            return client;
-        }
-
-        protected virtual ITask<int> RunProcessServer(string pathToServerExecutable)
-        {
-            if (localProcessManager == null)
-                localProcessManager = new ProcessManager(Environment);
-            return new ProcessManagerTask(TaskManager, localProcessManager, Environment, Configuration);
-        }
-
         private void ServerStopping() => stopSignal.Set();
 
         private void ProcessRestarting(IpcProcess process, ProcessRestartReason reason)
@@ -222,17 +200,28 @@
 
             if (disposing)
             {
-                if (ownsTaskManager)
+                if (!shuttingDown)
                 {
-                    TaskManager?.Dispose();
-                    ourContext?.Dispose();
+                    Shutdown();
+                    stopSignal.Wait(300);
                 }
 
-                localProcessManager?.Dispose();
-                ProcessManager?.Dispose();
+                try
+                {
+                    if (ownsTaskManager)
+                    {
+                        TaskManager?.Dispose();
+                        ourContext?.Dispose();
+                    }
 
-                ipcClient.Dispose();
-                completionHandle.Set();
+                    localProcessManager?.Dispose();
+                    ProcessManager?.Dispose();
+                    ipcClient?.Dispose();
+                }
+                finally
+                {
+                    completionHandle.Set();
+                }
             }
         }
 
@@ -260,8 +249,17 @@
                 this.server = server;
             }
 
-            public async Task ServerStopping() => server.ServerStopping();
-            public async Task ProcessRestarting(IpcProcess process, ProcessRestartReason reason) => server.ProcessRestarting(process, reason);
+            public Task ServerStopping()
+            {
+                server.ServerStopping();
+                return Task.CompletedTask;
+            }
+
+            public Task ProcessRestarting(IpcProcess process, ProcessRestartReason reason)
+            {
+                server.ProcessRestarting(process, reason);
+                return Task.CompletedTask;
+            }
         }
     }
 }

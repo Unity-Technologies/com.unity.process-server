@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
+    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj" />
+  </ItemGroup>
+
+</Project>

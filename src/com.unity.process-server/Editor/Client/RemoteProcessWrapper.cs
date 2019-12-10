@@ -112,10 +112,10 @@
         public void OnProcessEnd(IpcProcessEndEventArgs e)
         {
             if (!e.Successful)
-                thrownException = e.Exception;
+                thrownException = !string.IsNullOrEmpty(e.Exception) ? new ProcessException(e.Exception) : null;
 
             // the task is completed if the process server isn't going to restart it, we can finish up
-            if (ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
+            if (e.Process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
                 cts.Cancel();
         }
 

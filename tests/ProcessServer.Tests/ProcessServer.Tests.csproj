@@ -8,11 +8,12 @@
     <PackageSubFolder>\Helpers~\</PackageSubFolder>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\src\com.unity.process-server\Tests\**\*.cs" Exclude="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" />
-    <None Include="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" Link="UnityOnly\UnityBaseTest.cs" />
-
+    <Compile Include="..\..\src\com.unity.process-server\Tests\**\*.cs" Link="UnityTests\%(Filename)%(Extension)" Exclude="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" />
+    <None Include="..\..\src\com.unity.process-server\Tests\**\UnityBaseTest.cs" Link="UnityTests\UnityBaseTest.cs" />
+    <Compile Include="**\*.cs" Link="NUnitTests\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

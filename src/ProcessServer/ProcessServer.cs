@@ -12,25 +12,25 @@
         Shutdown
     }
 
-    public class ProcessServer : IServer
+    public class ProcessServer
     {
         private readonly IHostApplicationLifetime app;
-
         private TaskCompletionSource<bool> stopped = new TaskCompletionSource<bool>();
-
         private Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
+        private bool stopping = false;
 
         public ProcessServer(IHostApplicationLifetime app)
         {
             this.app = app;
+            app.ApplicationStopping.Register(() => stopped.TrySetResult(true));
         }
 
-        internal void ClientConnecting(IRequestContext context)
+        public void ClientConnecting(IRequestContext context)
         {
             clients.Add(context.Id, context);
         }
 
-        internal void ClientDisconnecting(IRequestContext context)
+        public void ClientDisconnecting(IRequestContext context)
         {
             if (clients.ContainsKey(context.Id))
             {
@@ -40,20 +40,45 @@
 
         public Task Stop()
         {
+            if (stopping) return stopped.Task;
+            stopping = true;
             app.StopApplication();
-            app.ApplicationStopping.Register(() => stopped.TrySetResult(true));
             return stopped.Task;
         }
 
-        internal void NotifyClients(NotificationType type)
+        public void Shutdown()
+        {
+            NotifyClients(NotificationType.Shutdown);
+        }
+
+        public void NotifyClients(NotificationType type)
         {
             switch (type)
             {
                 case NotificationType.Shutdown:
                     Parallel.ForEach(clients.Values, client => {
-                        client.GetRemoteTarget<IServerNotifications>().ServerStopping().Wait(100);
+                        try
+                        {
+                            client.GetRemoteTarget<IServerNotifications>().ServerStopping().Wait(100);
+                        }
+                        // really don't care about clients being disconnected
+                        catch {}
                     });
                     break;
+            }
+        }
+
+        public class Implementation : IServer
+        {
+            private readonly ProcessServer owner;
+
+            public Implementation(ProcessServer owner)
+            {
+                this.owner = owner;
+            }
+            public Task Stop()
+            {
+                return owner.Stop();
             }
         }
     }
