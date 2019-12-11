@@ -36,14 +36,14 @@ namespace ClientTestApp
 
             var server = ProcessServer.Get(configuration: new ServerConfiguration(buildDir));
 
-            var app = "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe";
+            var app = buildDir.Combine("tests/bin/Helper.CommandLine/Debug/net471/Helper.CommandLine.ex");
 
             Console.WriteLine("Got server, hit any key to continue");
             Console.ReadLine();
 
             var ret = new DotNetProcessTask(server.TaskManager,
                 server.Environment,
-                app, "-s 200");
+                app, "-s 200") { Affinity = TaskAffinity.None };
 
             var restarted = new TaskCompletionSource<ProcessRestartReason>();
 
@@ -77,12 +77,11 @@ namespace ClientTestApp
 
             ret = new DotNetProcessTask(server.TaskManager,
                 server.ProcessManager,
-                app, "-d 1");
-
+                app, "-d 1") { Affinity = TaskAffinity.None };
 
             ret.OnOutput += line => { Debugger.Break(); };
 
-            var data = await ret.Finally((_, __, r) => r).StartAwait();
+            var data = await ret.Finally((_, __, r) => r).Start().Task;
 
             if (!ret.Successful)
                 Console.WriteLine($"process failed {ret.Exception}");
@@ -93,7 +92,7 @@ namespace ClientTestApp
             Console.ReadLine();
 
             ret.Dispose();
-            server.Stop();
+            await server.Stop();
         }
     }
 }

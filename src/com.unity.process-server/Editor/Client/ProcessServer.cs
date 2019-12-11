@@ -6,12 +6,15 @@
     using Interfaces;
     using Ipc;
     using Tasks;
+    using Unity.Editor.ProcessServer.Extensions;
     using Unity.Editor.Tasks.Extensions;
 
     public interface IProcessServer
     {
-        IProcessServer Connect();
-        void Stop();
+        IProcessServer ConnectSync();
+        Task<IProcessServer> Connect();
+        void ShutdownSync();
+        Task Shutdown();
 
         IServer Server { get; }
         IProcessRunner ProcessRunner { get; }
@@ -38,12 +41,15 @@
     public class ProcessServer : IProcessServer
     {
         private static ProcessServer instance;
+        private const int ConnectionTimeout = 5000;
 
         private readonly bool ownsTaskManager;
         private readonly ServerNotifications notifications;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
+        private readonly CancellationTokenSource externalCts;
         private readonly ManualResetEventSlim stopSignal = new ManualResetEventSlim(false);
         private readonly ManualResetEvent completionHandle = new ManualResetEvent(false);
+        private readonly Task completionTask;
 
         private MainThreadSynchronizationContext ourContext;
 
@@ -58,27 +64,43 @@
             IProcessServerConfiguration configuration)
         {
             Environment = environment;
-            Configuration = configuration;
+            completionTask = completionHandle.ToTask();
 
             ownsTaskManager = taskManager == null;
 
             if (ownsTaskManager)
             {
-                TaskManager = GetTaskManager();
+                taskManager = new TaskManager();
+                try
+                {
+                    taskManager.Initialize();
+                }
+                catch
+                {
+                    ourContext = new MainThreadSynchronizationContext(cts.Token);
+                    taskManager.Initialize(ourContext);
+                }
             }
             else
             {
-                TaskManager = taskManager;
-                TaskManager.Token.Register(Shutdown);
+                externalCts = CancellationTokenSource.CreateLinkedTokenSource(taskManager.Token);
+                externalCts.Token.Register(Dispose);
             }
 
+            TaskManager = taskManager;
+
+            if (configuration == null)
+                configuration = new ApplicationConfigurationWrapper(TaskManager, ApplicationConfiguration.Instance);
+
+            Configuration = configuration;
+
             localProcessManager = new ProcessManager(Environment);
-            processManager = new RemoteProcessManager(localProcessManager.DefaultProcessEnvironment, cts.Token);
+            processManager = new RemoteProcessManager(this, localProcessManager.DefaultProcessEnvironment, cts.Token);
             notifications = new ServerNotifications(this);
 
 
 #if UNITY_EDITOR
-            UnityEditor.EditorApplication.quitting += Stop;
+            UnityEditor.EditorApplication.quitting += ShutdownSync;
 #endif
         }
 
@@ -91,59 +113,84 @@
 
             if (instance == null)
             {
-                var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration ?? ApplicationConfiguration.Instance);
+                var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration);
                 instance = inst;
             }
-            return instance.Connect();
+            return instance;
         }
 
-        public IProcessServer Connect()
+        public static void Stop()
+        {
+            if (instance?.disposed ?? true)
+                return;
+            instance.ShutdownSync();
+        }
+
+        public IProcessServer ConnectSync() => InternalConnect();
+
+        public async Task<IProcessServer> Connect()
         {
             if (disposed || shuttingDown) return null;
+            if (ipcClient != null) return this;
 
-            if (ipcClient != null)
-            {
-                return this;
-            }
+            ipcClient = await SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token);
 
-            var task = SetupIpcTask().Start();
-            if (!task.Task.Wait(5000, cts.Token))
-            {
-                return null;
-            }
-
-            ipcClient = task.Result;
-            ipcClient.Disconnected(e => {
-                processManager.ConnectToServer(null);
-                ipcClient = null;
-            });
-
-            processManager.ConnectToServer(this);
-            Configuration.Port = ipcClient.Configuration.Port;
-
+            Configure();
             return this;
         }
 
-        public void Stop()
+        private IProcessServer InternalConnect()
+        {
+            if (disposed || shuttingDown) return null;
+            if (ipcClient != null) return this;
+
+            var task = SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token);
+            task.Wait();
+            ipcClient = task.Result;
+
+            Configure();
+            return this;
+        }
+
+        private void Configure()
+        {
+            ipcClient.Disconnected(e => {
+                ipcClient = null;
+            });
+
+            Configuration.Port = ipcClient.Configuration.Port;
+        }
+
+        public Task Shutdown()
+        {
+            if (disposed) return Task.CompletedTask;
+            RequestShutdown();
+            return completionTask;
+        }
+
+        public void ShutdownSync()
         {
             if (disposed) return;
-            Shutdown();
+            RequestShutdown();
             Completion.WaitOne(500);
         }
 
-        private ITaskManager GetTaskManager()
+        private void RequestShutdown()
         {
-            var taskManager = new TaskManager();
-            try
-            {
-                taskManager.Initialize();
-            }
-            catch
-            {
-                ourContext = new MainThreadSynchronizationContext(cts.Token);
-                taskManager.Initialize(ourContext);
-            }
-            return taskManager;
+            if (shuttingDown) return;
+            shuttingDown = true;
+
+            new Thread(() => {
+                try
+                {
+                    Server.Stop().FireAndForget();
+                    stopSignal.Wait(1000);
+                }
+                finally
+                {
+                    Dispose();
+                }
+            }).Start();
         }
 
         private ITask<IpcClient> SetupIpcTask()
@@ -158,45 +205,16 @@
                                    .Finally((success, exception, ret) => {
                                        if (!success)
                                        {
-#if UNITY_EDITOR
-                                           UnityEngine.Debug.LogException(ex);
-#endif
                                            return default;
                                        }
                                        return ret;
                                    });
         }
 
-        private void Shutdown()
-        {
-            if (shuttingDown)
-            {
-                Completion.WaitOne(500);
-                return;
-            }
-            shuttingDown = true;
-
-            new Thread(() => {
-                try
-                {
-                    Server.Stop().FireAndForget();
-                    stopSignal.Wait(300);
-                }
-                catch {}
-                cts.Cancel();
-                Dispose();
-            }).Start();
-        }
-
         private void ServerStopping() => stopSignal.Set();
-
-        private void ProcessRestarting(IpcProcess process, ProcessRestartReason reason)
-        {
-            processManager.RaiseProcessRestart(process, reason);
-        }
+        private void ProcessRestarting(IpcProcess process, ProcessRestartReason reason) => processManager.RaiseProcessRestart(process, reason);
 
         private bool disposed;
-
         protected virtual void Dispose(bool disposing)
         {
             if (disposed) return;
@@ -204,14 +222,10 @@
 
             if (disposing)
             {
-                if (!shuttingDown)
-                {
-                    Shutdown();
-                    stopSignal.Wait(300);
-                }
-
                 try
                 {
+                    externalCts?.Dispose();
+                    cts.Cancel();
                     localProcessManager?.Dispose();
                     ProcessManager?.Dispose();
                     ipcClient?.Dispose();
@@ -262,6 +276,79 @@
             {
                 server.ProcessRestarting(process, reason);
                 return Task.CompletedTask;
+            }
+        }
+
+        /// <summary>
+        /// Class that makes sure we always write the port information in the main thread, because it might be
+        /// a scriptable singleton
+        /// </summary>
+        class ApplicationConfigurationWrapper : IProcessServerConfiguration
+        {
+            private readonly ITaskManager taskManager;
+            private readonly IProcessServerConfiguration other;
+            private int? port;
+
+            public ApplicationConfigurationWrapper(ITaskManager taskManager, IProcessServerConfiguration other)
+            {
+                this.taskManager = taskManager;
+                this.other = other;
+            }
+
+            public int Port
+            {
+                get
+                {
+                    return port.HasValue ? port.Value : other.Port;
+                }
+                set
+                {
+                    if (taskManager.InUIThread)
+                    {
+                        other.Port = value;
+                    }
+                    else
+                    {
+                        port = value;
+                        taskManager.RunInUI(() => {
+                            other.Port = port.Value;
+                            port = null;
+                        });
+                    }
+                }
+            }
+
+            public string ExecutablePath => other.ExecutablePath;
+        }
+    }
+
+    namespace Extensions
+    {
+        internal static class WaitHandleExtensions
+        {
+            public static Task ToTask(this WaitHandle waitHandle)
+            {
+                var tcs = new TaskCompletionSource<object>();
+
+                // Registering callback to wait till WaitHandle changes its state
+
+                ThreadPool.RegisterWaitForSingleObject(
+                    waitObject: waitHandle,
+                    callBack: (o, timeout) => { tcs.SetResult(null); },
+                    state: null,
+                    timeout: TimeSpan.FromMilliseconds(-1),
+                    executeOnlyOnce: true);
+
+                return tcs.Task;
+            }
+
+            public static async Task<T> StartAwait<T>(this ITask<T> task, int timeout, string timeoutMessage, CancellationToken token)
+            {
+                var t = Task.Delay(timeout, token);
+                var r = await Task.WhenAny(task.StartAwait(), t).ConfigureAwait(false);
+                if (r == t)
+                    throw new TimeoutException(timeoutMessage);
+                return task.Result;
             }
         }
     }

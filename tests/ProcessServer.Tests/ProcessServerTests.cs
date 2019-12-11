@@ -55,8 +55,8 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
-                processServer.Stop();
+                await processServer.Connect();
+                await processServer.Stop();
                 var shutdown = processServer.Completion.WaitOne(1000);
                 Assert.True(shutdown, "Server did not shutdown on time");
             }
@@ -68,8 +68,6 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString()) ))
             {
-                processServer.Connect();
-
                 var task = new DotNetProcessTask<string>(test.TaskManager,
                                     test.ProcessManager.DefaultProcessEnvironment,
                                     test.Environment,
@@ -83,8 +81,7 @@ namespace BaseTests
 
                 Assert.AreEqual("done", ret);
 
-                processServer.Stop();
-                Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
+                await processServer.Stop();
             }
         }
 
@@ -94,8 +91,6 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
-
                 var ret = new DotNetProcessTask(test.TaskManager,
                                     processServer.ProcessManager,
                                     TestApp, "-s 200");
@@ -124,23 +119,25 @@ namespace BaseTests
         {
             using (var test = StartTest())
             {
-                var runner = new ProcessRunner(test.TaskManager, test.ProcessManager,
-                    test.ProcessManager.DefaultProcessEnvironment, Substitute.For<ILogger<ProcessRunner>>());
+                using (var runner = new ProcessRunner(test.TaskManager, test.ProcessManager,
+                    test.ProcessManager.DefaultProcessEnvironment, Substitute.For<ILogger<ProcessRunner>>()))
+                {
 
-                var notifications = Substitute.For<IServerNotifications>();
-                var client = Substitute.For<IRequestContext>();
-                client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
+                    var notifications = Substitute.For<IServerNotifications>();
+                    var client = Substitute.For<IRequestContext>();
+                    client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
 
-                string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
+                    string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
 
-                var task = runner.RunProcess(id);
+                    var task = runner.RunProcess(id);
 
-                await task.Task;
+                    await task.Task;
 
-                await Task.Delay(100);
-                await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
+                    await Task.Delay(100);
+                    await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
 
-                await runner.StopProcess(id).Task;
+                    await runner.StopProcess(id).Task;
+                }
             }
         }
 
@@ -150,8 +147,6 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                processServer.Connect();
-
                 try
                 {
                     var task = new ProcessTask<string>(test.TaskManager,
@@ -178,7 +173,7 @@ namespace BaseTests
                 }
                 finally
                 {
-                    processServer.Stop();
+                    await processServer.Stop();
                     Assert.True(processServer.Completion.WaitOne(100), "The server did not stop on time");
                 }
             }

@@ -53,7 +53,7 @@
             var runner = server.ProcessRunner;
             if (runner == null)
             {
-                server = server.Connect();
+                server = server.ConnectSync();
                 runner = server.ProcessRunner;
             }
             return runner;
