@@ -55,7 +55,7 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                await processServer.Connect();
+                processServer.Connect();
                 processServer.Stop();
                 var shutdown = processServer.Completion.WaitOne(1000);
                 Assert.True(shutdown, "Server did not shutdown on time");
@@ -68,7 +68,7 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString()) ))
             {
-                await processServer.Connect();
+                processServer.Connect();
 
                 var task = new DotNetProcessTask<string>(test.TaskManager,
                                     test.ProcessManager.DefaultProcessEnvironment,
@@ -94,7 +94,7 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                await processServer.Connect();
+                processServer.Connect();
 
                 var ret = new DotNetProcessTask(test.TaskManager,
                                     processServer.ProcessManager,
@@ -150,7 +150,7 @@ namespace BaseTests
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment, new ServerConfiguration(TestAssemblyLocation.ToString())))
             {
-                await processServer.Connect();
+                processServer.Connect();
 
                 try
                 {

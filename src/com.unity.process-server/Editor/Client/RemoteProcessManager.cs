@@ -45,7 +45,7 @@
         private readonly Dictionary<string, SynchronizationContextTaskScheduler> processes = new Dictionary<string, SynchronizationContextTaskScheduler>();
         private readonly Dictionary<string, RemoteProcessWrapper> wrappers = new Dictionary<string, RemoteProcessWrapper>();
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
-        private IProcessRunner runner;
+        private IProcessServer server;
         public event EventHandler<IpcProcessRestartEventArgs> OnProcessRestart;
 
         public RemoteProcessManager(IProcessEnvironment environment, CancellationToken token)
@@ -55,9 +55,9 @@
             ProcessNotifications = new Notifications(this);
         }
 
-        public void ConnectToServer(IProcessRunner processRunner)
+        public void ConnectToServer(IProcessServer processServer)
         {
-            this.runner = processRunner;
+            this.server = processServer;
         }
 
         public T Configure<T>(T processTask, ProcessStartInfo startInfo, ProcessOptions options = default) where T : IProcessTask
@@ -101,11 +101,11 @@
             Action onStart, Action onEnd, Action<Exception, string> onError,
             CancellationToken token)
         {
-            if (runner == null)
+            if (server == null)
             {
-                throw new InvalidOperationException("runner is not set on RemoteProcessManager. Did you forget to call ConnectToServer(runner)?");
+                throw new InvalidOperationException("server is not set on RemoteProcessManager. Did you forget to call ConnectToServer(runner)?");
             }
-            return new RemoteProcessWrapper(runner, startInfo, outputProcessor, onStart, onEnd, onError, token);
+            return new RemoteProcessWrapper(server, startInfo, outputProcessor, onStart, onEnd, onError, token);
         }
 
         public void Stop()

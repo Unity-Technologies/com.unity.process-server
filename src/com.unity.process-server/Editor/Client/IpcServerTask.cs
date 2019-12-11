@@ -86,11 +86,10 @@
 
                 while (result == null && retries > 0)
                 {
+                    IProcessTask<int> processTask = null;
+
                     try
                     {
-                        retries--;
-                        IProcessTask<int> processTask = null;
-
                         var ipcTask = new TPLTask<int, IpcClient>(TaskManager, ConnectToServer) { Affinity = TaskAffinity.None };
 
                         if (port > 0)
@@ -104,19 +103,7 @@
                             ipcTask = processTask.Then(ipcTask);
                         }
 
-                        // connect to ipc server
-                        var t = ipcTask.Finally((s, ex, ret) => {
-                            if (!s && ex != null) ex.Rethrow();
-                            return ret;
-                        }).Start();
-
-                        if (!t.Task.Wait(10000))
-                        {
-                            processTask?.Stop();
-                            processTask = null;
-                            throw new TimeoutException("Could not connect to IPC server.");
-                        }
-
+                        ipcTask.StartSync(Token);
                         result = ipcTask.Result;
                     }
                     catch (Exception ex)
@@ -124,6 +111,10 @@
 #if UNITY_EDITOR
                         UnityEngine.Debug.LogException(ex);
 #endif
+                        retries--;
+                        processTask?.Stop();
+                        processTask?.Dispose();
+                        processTask = null;
                         port = 0;
                         result = default;
                         if (retries == 0)

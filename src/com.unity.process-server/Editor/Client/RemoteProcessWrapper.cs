@@ -12,7 +12,7 @@
     {
         public event Action<RemoteProcessWrapper, IpcProcess> OnProcessPrepared;
 
-        private readonly IProcessRunner runner;
+        private IProcessServer server;
         private readonly IOutputProcessor outputProcessor;
 
         private Action onStart;
@@ -26,7 +26,7 @@
         private bool detached = false;
 
         public RemoteProcessWrapper(
-            IProcessRunner runner,
+            IProcessServer server,
             ProcessStartInfo startInfo,
             IOutputProcessor outputProcessor,
             Action onStart,
@@ -35,7 +35,7 @@
             CancellationToken token)
             : base(startInfo)
         {
-            this.runner = runner;
+            this.server = server;
             this.outputProcessor = outputProcessor;
             this.onStart = onStart;
             this.onEnd = onEnd;
@@ -48,10 +48,23 @@
             ProcessOptions = options;
         }
 
+        private IProcessRunner GetRunner()
+        {
+            var runner = server.ProcessRunner;
+            if (runner == null)
+            {
+                server = server.Connect();
+                runner = server.ProcessRunner;
+            }
+            return runner;
+        }
+
         public override void Run()
         {
             try
             {
+                var runner = GetRunner();
+
                 var task = runner.Prepare(ProcessInfo.FromStartInfo(StartInfo), ProcessOptions);
 
                 task.Wait(cts.Token);
@@ -79,6 +92,7 @@
 
         public override void Stop(bool dontWait = false)
         {
+            var runner = GetRunner();
             var task = runner.Stop(remoteProcess);
             if (!dontWait)
                 task.Wait(cts.Token);

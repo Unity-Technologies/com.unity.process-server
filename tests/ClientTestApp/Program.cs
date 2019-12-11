@@ -34,58 +34,66 @@ namespace ClientTestApp
 
             buildDir = buildDir.Combine("packages/com.unity.process-server/Server~");
 
-            var server = await ProcessServer.Get(configuration: new ServerConfiguration(buildDir));
+            var server = ProcessServer.Get(configuration: new ServerConfiguration(buildDir));
+
+            var app = "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe";
 
             Console.WriteLine("Got server, hit any key to continue");
             Console.ReadLine();
+
             var ret = new DotNetProcessTask(server.TaskManager,
                 server.Environment,
-                "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe", "-s 200");
+                app, "-s 200");
 
-            try
-            {
-                var restarted = new TaskCompletionSource<ProcessRestartReason>();
+            var restarted = new TaskCompletionSource<ProcessRestartReason>();
 
-                ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
-                ret.OnStartProcess += _ => ret.Detach();
-                ret.OnEnd += (_, __, ___, ____) => restarted.TrySetResult(ProcessRestartReason.FirstStart);
+            ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
+            ret.OnStartProcess += _ => ret.Detach();
 
-                var restartCount = 0;
+            var restartCount = 0;
 
-                server.ProcessManager.OnProcessRestart += (sender, e) => {
-                    ret.Detach();
-                    restartCount++;
-                    if (restartCount == 2)
-                        restarted.TrySetResult(e.Reason);
-                };
+            server.ProcessManager.OnProcessRestart += (sender, e) => {
+                ret.Detach();
+                restartCount++;
+                if (restartCount == 2)
+                    restarted.TrySetResult(e.Reason);
+            };
 
-                ret.Start();
 
-                var reason = await restarted.Task;
+            var done = await Task.WhenAny(restarted.Task, ret.Finally((_, __) => { }).Start().Task);
 
-                Console.WriteLine("restarted");
-                Console.ReadLine();
+            if (ret.Successful)
+                Console.WriteLine($"restarted {restartCount} times");
+            else
+                Console.WriteLine($"process failed {ret.Exception}");
 
-                //ret = new DotNetProcessTask(server.TaskManager,
-                //    server.Environment,
-                //    "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe", "-s 200");
-                //ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
+            Console.WriteLine("Running app with data");
+            Console.ReadLine();
 
-                ret = new DotNetProcessTask(server.TaskManager,
-                    server.ProcessManager,
-                    "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe", "-d 1");
+            //ret = new DotNetProcessTask(server.TaskManager,
+            //    server.Environment,
+            //    "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe", "-s 200");
+            //ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
 
-                ret.OnOutput += line => { Debugger.Break(); };
+            ret = new DotNetProcessTask(server.TaskManager,
+                server.ProcessManager,
+                app, "-d 1");
 
-                await ret.StartAwait();
 
-                Console.ReadLine();
-            }
-            finally
-            {
-                ret.Dispose();
-                server.Stop();
-            }
+            ret.OnOutput += line => { Debugger.Break(); };
+
+            var data = await ret.Finally((_, __, r) => r).StartAwait();
+
+            if (!ret.Successful)
+                Console.WriteLine($"process failed {ret.Exception}");
+            else
+                Console.WriteLine($"data: {data}");
+
+            Console.WriteLine("Press any key to exit");
+            Console.ReadLine();
+
+            ret.Dispose();
+            server.Stop();
         }
     }
 }

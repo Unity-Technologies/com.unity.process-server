@@ -10,7 +10,7 @@
 
     public interface IProcessServer
     {
-        Task<IProcessServer> Connect();
+        IProcessServer Connect();
         void Stop();
 
         IServer Server { get; }
@@ -45,28 +45,13 @@
         private readonly ManualResetEventSlim stopSignal = new ManualResetEventSlim(false);
         private readonly ManualResetEvent completionHandle = new ManualResetEvent(false);
 
+        private MainThreadSynchronizationContext ourContext;
+
         private IpcClient ipcClient;
 
         private IProcessManager localProcessManager;
         private RemoteProcessManager processManager;
-        private MainThreadSynchronizationContext ourContext;
         private bool shuttingDown;
-
-        public static async Task<IProcessServer> Get(ITaskManager taskManager = null,
-            IEnvironment environment = null,
-            IProcessServerConfiguration configuration = null)
-        {
-            if (instance != null && instance.disposed)
-            {
-                instance = null;
-            }
-            if (instance == null)
-            {
-                var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration ?? ApplicationConfiguration.Instance);
-                instance = inst;
-            }
-            return await instance.Connect();
-        }
 
         public ProcessServer(ITaskManager taskManager,
             IEnvironment environment,
@@ -78,10 +63,14 @@
             ownsTaskManager = taskManager == null;
 
             if (ownsTaskManager)
-                taskManager = new TaskManager();
-
-            TaskManager = taskManager;
-            TaskManager.Token.Register(Shutdown);
+            {
+                TaskManager = GetTaskManager();
+            }
+            else
+            {
+                TaskManager = taskManager;
+                TaskManager.Token.Register(Shutdown);
+            }
 
             localProcessManager = new ProcessManager(Environment);
             processManager = new RemoteProcessManager(localProcessManager.DefaultProcessEnvironment, cts.Token);
@@ -93,6 +82,48 @@
 #endif
         }
 
+        public static IProcessServer Get(ITaskManager taskManager = null,
+            IEnvironment environment = null,
+            IProcessServerConfiguration configuration = null)
+        {
+            if (instance?.disposed ?? false)
+                instance = null;
+
+            if (instance == null)
+            {
+                var inst = new ProcessServer(taskManager, environment ?? TheEnvironment.instance.Environment, configuration ?? ApplicationConfiguration.Instance);
+                instance = inst;
+            }
+            return instance.Connect();
+        }
+
+        public IProcessServer Connect()
+        {
+            if (disposed || shuttingDown) return null;
+
+            if (ipcClient != null)
+            {
+                return this;
+            }
+
+            var task = SetupIpcTask().Start();
+            if (!task.Task.Wait(5000, cts.Token))
+            {
+                return null;
+            }
+
+            ipcClient = task.Result;
+            ipcClient.Disconnected(e => {
+                processManager.ConnectToServer(null);
+                ipcClient = null;
+            });
+
+            processManager.ConnectToServer(this);
+            Configuration.Port = ipcClient.Configuration.Port;
+
+            return this;
+        }
+
         public void Stop()
         {
             if (disposed) return;
@@ -100,38 +131,22 @@
             Completion.WaitOne(500);
         }
 
-        public async Task<IProcessServer> Connect()
+        private ITaskManager GetTaskManager()
         {
-            if (disposed || shuttingDown) return null;
-
-            EnsureInitialized();
-
-            if (ipcClient != null)
+            var taskManager = new TaskManager();
+            try
             {
-                return this;
+                taskManager.Initialize();
             }
-
-            ipcClient = await SetupIpcTask().StartAwait();
-
-            ipcClient.Disconnected(e => {
-                processManager.ConnectToServer(null);
-                var c = ipcClient;
-                ipcClient = null;
-                if (disposed || shuttingDown) return;
-
-                new ActionTask<IpcClient>(TaskManager, cts.Token, client => client.Dispose()) { PreviousResult = c, Affinity = TaskAffinity.None }
-                    .Then(SetupIpcTask())
-                    .Then(x => ipcClient = x, TaskAffinity.None)
-                    .Start();
-            });
-
-            processManager.ConnectToServer(ipcClient.GetRemoteTarget<IProcessRunner>());
-            Configuration.Port = ipcClient.Configuration.Port;
-
-            return this;
+            catch
+            {
+                ourContext = new MainThreadSynchronizationContext(cts.Token);
+                taskManager.Initialize(ourContext);
+            }
+            return taskManager;
         }
 
-        private IpcServerTask SetupIpcTask()
+        private ITask<IpcClient> SetupIpcTask()
         {
             return new IpcServerTask(TaskManager, localProcessManager,
                                        localProcessManager.DefaultProcessEnvironment,
@@ -139,7 +154,17 @@
                                    .RegisterRemoteTarget<IServer>()
                                    .RegisterRemoteTarget<IProcessRunner>()
                                    .RegisterLocalTarget(notifications)
-                                   .RegisterLocalTarget(processManager.ProcessNotifications);
+                                   .RegisterLocalTarget(processManager.ProcessNotifications)
+                                   .Finally((success, exception, ret) => {
+                                       if (!success)
+                                       {
+#if UNITY_EDITOR
+                                           UnityEngine.Debug.LogException(ex);
+#endif
+                                           return default;
+                                       }
+                                       return ret;
+                                   });
         }
 
         private void Shutdown()
@@ -161,27 +186,6 @@
                 cts.Cancel();
                 Dispose();
             }).Start();
-        }
-
-        private void EnsureInitialized()
-        {
-            if (TaskManager.UIScheduler == null)
-            {
-                try
-                {
-                    TaskManager.Initialize();
-                }
-                catch
-                {
-                    if (ownsTaskManager)
-                    {
-                        ourContext = new MainThreadSynchronizationContext(TaskManager.Token);
-                        TaskManager.Initialize(ourContext);
-                    }
-                    else
-                        throw;
-                }
-            }
         }
 
         private void ServerStopping() => stopSignal.Set();
@@ -208,15 +212,14 @@
 
                 try
                 {
+                    localProcessManager?.Dispose();
+                    ProcessManager?.Dispose();
+                    ipcClient?.Dispose();
                     if (ownsTaskManager)
                     {
                         TaskManager?.Dispose();
                         ourContext?.Dispose();
                     }
-
-                    localProcessManager?.Dispose();
-                    ProcessManager?.Dispose();
-                    ipcClient?.Dispose();
                 }
                 finally
                 {
@@ -235,8 +238,8 @@
         public IRemoteProcessManager ProcessManager => processManager;
         public IProcessServerConfiguration Configuration { get; }
 
-        public IServer Server => ipcClient.GetRemoteTarget<IServer>();
-        public IProcessRunner ProcessRunner => ipcClient.GetRemoteTarget<IProcessRunner>();
+        public IServer Server => ipcClient?.GetRemoteTarget<IServer>();
+        public IProcessRunner ProcessRunner => ipcClient?.GetRemoteTarget<IProcessRunner>();
 
         public WaitHandle Completion => completionHandle;
 
