@@ -18,6 +18,6 @@
     "com.unity.editor.tasks": "1.2.9"
   },
   "testPackages": {
-    "com.unity.process-server": "0.0.0-placeholder"
+    "com.unity.process-server.tests": "0.0.0-placeholder"
   }
 }

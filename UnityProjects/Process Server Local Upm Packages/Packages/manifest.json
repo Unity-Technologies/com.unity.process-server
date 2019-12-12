@@ -1,8 +1,8 @@
 {
   "registry": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates",
   "dependencies": {
-    "com.unity.process-server": "file:../../../upm-ci~/packages/com.unity.process-server-0.1.16-preview.tgz",
-    "com.unity.process-server.tests": "file:../../../upm-ci~/packages/com.unity.process-server.tests-0.1.16-preview.tgz",
+    "com.unity.process-server": "file:../../../upm-ci~/packages/com.unity.process-server-0.1.18-preview.tgz",
+    "com.unity.process-server.tests": "file:../../../upm-ci~/packages/com.unity.process-server.tests-0.1.18-preview.tgz",
     "com.unity.package-manager-ui": "2.2.0",
     "com.unity.test-framework": "1.0.13",
     "com.unity.modules.imageconversion": "1.0.0",
