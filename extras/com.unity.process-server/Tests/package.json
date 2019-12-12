@@ -10,8 +10,9 @@
     },
     "repository" : {
       "type" : "git",
-      "url": "ssh://git@github.com/Unity-Technologies/com.unity.process-server.git",
-      "directory": ""
+      "url": "git@github.com/Unity-Technologies/com.unity.process-server.git",
+      "directory": "",
+      "revision": ""
     },
     "dependencies": {
         "com.unity.process-server": "0.0.0-placeholder"
