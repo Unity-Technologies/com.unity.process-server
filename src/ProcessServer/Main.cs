@@ -16,6 +16,7 @@ namespace Unity.Editor.ProcessServer.Server
     using Serilog.Events;
     using SpoiledCat.Extensions.Configuration;
     using Tasks;
+    using Tasks.Extensions;
 
     static class Program
     {
@@ -35,8 +36,8 @@ namespace Unity.Editor.ProcessServer.Server
             }
 
             var taskManager = new TaskManager();
-            taskManager.UIScheduler = TaskScheduler.Current;
-            taskManager.Initialize();
+            var syncContext = new ThreadSynchronizationContext(taskManager.Token);
+            taskManager.Initialize(syncContext);
 
             var environment = new UnityEnvironment("Process Manager")
                 .Initialize(configuration.ProjectPath, configuration.UnityVersion,
@@ -100,6 +101,8 @@ namespace Unity.Editor.ProcessServer.Server
 
             // wait until all stop events have completed
             exiting.Wait();
+
+            syncContext.Dispose();
 
             return 0;
         }
