@@ -1,4 +1,5 @@
 {
+  "registry": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates",
   "dependencies": {
     "com.unity.process-server": "file:../../../build/packages/com.unity.process-server",
     "com.unity.process-server.tests": "file:../../../build/packages/com.unity.process-server.tests",
