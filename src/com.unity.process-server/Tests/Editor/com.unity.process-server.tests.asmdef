@@ -5,7 +5,8 @@
         "UnityEditor.TestRunner",
         "com.unity.process-server",
         "com.unity.editor.tasks",
-        ""
+        "com.unity.ipc",
+        "Unity.Editor.ProcessServer.Interfaces"
     ],
     "includePlatforms": [
         "Editor"

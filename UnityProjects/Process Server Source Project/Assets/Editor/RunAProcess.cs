@@ -19,20 +19,19 @@ public class RunAProcess : MonoBehaviour
     {
         var processServer = ProcessServer.Get();
 
+
         Debug.Log("Running out-of-process");
-        var testApp = Path.GetFullPath("Packages/com.unity.process-server/Tests/Helpers~/Helper.CommandLine.exe");
 
         var expectedResult = "result!";
 
-        var process = new DotNetProcessTask(processServer.TaskManager, processServer.ProcessManager,
-                testApp, "-d " + expectedResult.InQuotes());
+        var testApp = Path.GetFullPath("Packages/com.unity.process-server/Tests/Helpers~/Helper.CommandLine.exe");
 
-        process.Finally((success, ex, ret) => {
-            if (!success)
-                Debug.LogException(ex);
-            else
-                Debug.Log($"done! got {ret}");
-        }).Start();
+        processServer.NewDotNetProcess(testApp, "-d " + expectedResult.InQuotes(),
+                         onEnd: (_, result, success, exception) => {
 
+                             Debug.Log(result);
+                         },
+                         outputProcessor: new FirstNonNullLineOutputProcessor<string>())
+                     .Start();
     }
 }

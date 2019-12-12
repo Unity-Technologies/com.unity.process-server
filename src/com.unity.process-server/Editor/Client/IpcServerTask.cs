@@ -16,10 +16,10 @@
         private readonly IProcessEnvironment processEnvironment;
         private readonly List<Type> remoteIpcTargets;
         private readonly List<object> localIpcTargets;
-        private int port;
-        private string executable;
-        private string arguments;
-        private IOutputProcessor<int> portProcessor;
+        private readonly string executable;
+        private readonly string arguments;
+        private readonly IOutputProcessor<int> portProcessor;
+        private readonly int expectedPort;
 
         private readonly AutoResetEvent signal = new AutoResetEvent(false);
 
@@ -41,12 +41,12 @@
                     List<Type> remoteIpcTargets = null, List<object> localIpcTargets = null)
             : base(taskManager, token)
         {
+            this.expectedPort = configuration.Port;
             this.processManager = processManager;
             this.processEnvironment = processManager.DefaultProcessEnvironment;
             this.environment = processEnvironment.Environment;
             this.remoteIpcTargets = remoteIpcTargets ?? new List<Type>();
             this.localIpcTargets = localIpcTargets ?? new List<object>();
-            port = configuration.Port;
             executable = configuration.ExecutablePath;
             arguments = CreateArguments(environment);
             portProcessor = new BaseOutputProcessor<int>((string line, out int result) => {
@@ -82,8 +82,8 @@
             var result = base.RunWithReturn(success);
             try
             {
-                int retries = 2;
-
+                var retries = 2;
+                var port = expectedPort;
                 while (result == null && retries > 0)
                 {
                     IProcessTask<int> processTask = null;
@@ -108,9 +108,13 @@
                     }
                     catch (Exception ex)
                     {
-#if UNITY_EDITOR
-                        UnityEngine.Debug.LogException(ex);
-#endif
+                        if (ex is AggregateException)
+                        {
+                            if (processTask != null && !processTask.Successful)
+                            {
+                                ex = processTask.Exception;
+                            }
+                        }
                         retries--;
                         processTask?.Stop();
                         processTask?.Dispose();
@@ -118,7 +122,7 @@
                         port = 0;
                         result = default;
                         if (retries == 0)
-                            throw;
+                            ex.Rethrow();
                     }
                 }
             }
@@ -128,7 +132,7 @@
                 UnityEngine.Debug.LogException(ex);
 #endif
                 if (!RaiseFaultHandlers(ex))
-                    ex.Rethrow();
+                    Exception.Rethrow();
             }
             return result;
         }
@@ -139,34 +143,19 @@
                 processEnvironment, environment, executable, arguments,
                 portProcessor);
 
-            task.OnOutput += s => {
-#if UNITY_EDITOR
-                UnityEngine.Debug.Log($"Port:{s}");
-#endif
-                task.Detach();
-            };
-            task.OnEnd += (_, __, ___, ____) => {
-#if UNITY_EDITOR
-                UnityEngine.Debug.Log($"Process running");
-#endif
-            };
+            // server returned the port, detach the process
+            task.OnOutput += _ => task.Detach();
             return task;
         }
 
         private async Task<IpcClient> ConnectToServer(int port)
         {
-#if UNITY_EDITOR
-            UnityEngine.Debug.Log($"Connecting to port {port}");
-#endif
             var client = new IpcClient(new Configuration { Port = port }, Token);
             foreach (var type in remoteIpcTargets)
                 client.RegisterRemoteTarget(type);
             foreach (var inst in localIpcTargets)
                 client.RegisterLocalTarget(inst);
             await client.Start();
-#if UNITY_EDITOR
-            UnityEngine.Debug.Log($"Connected to port {port}");
-#endif
             return client;
         }
 

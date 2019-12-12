@@ -11,6 +11,7 @@ using Unity.Editor.ProcessServer.Internal.IO;
 namespace BaseTests
 {
     using System.Runtime.CompilerServices;
+    using Unity.Editor.ProcessServer;
     using Unity.Editor.Tasks.Extensions;
 
     interface ILogging
@@ -20,6 +21,18 @@ namespace BaseTests
         void Warn(string message, params object[] objects);
         void Error(string message, params object[] objects);
         void Trace(string message, params object[] objects);
+    }
+
+    class ServerConfiguration : Unity.Ipc.Configuration, IProcessServerConfiguration
+    {
+        public const string ProcessExecutableName = "processserver.exe";
+
+        public ServerConfiguration(string processServerDirectory)
+        {
+            ExecutablePath = processServerDirectory.ToSPath().Combine(ProcessExecutableName);
+        }
+
+        public string ExecutablePath { get; set; }
     }
 
     internal class TestData : IDisposable
@@ -135,7 +148,7 @@ namespace BaseTests
 			while (!tasks.All(x => x.Task.IsCompleted)) yield return null;
 		}
 
-		protected static IEnumerable<object> StartAndWaitForCompletion(IEnumerable<ITask> tasks)
+        protected static IEnumerable<object> StartAndWaitForCompletion(IEnumerable<ITask> tasks)
 		{
 			foreach (var task in tasks) task.Start();
 			while (!tasks.All(x => x.Task.IsCompleted)) yield return null;

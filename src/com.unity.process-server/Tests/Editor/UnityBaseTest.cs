@@ -20,6 +20,8 @@ namespace BaseTests
 
     public partial class BaseTest
     {
+        internal SPath ServerDirectory => "Packages/com.unity.process-server/Server~".ToSPath().Resolve();
+
         internal SPath? testApp;
 
         internal SPath TestApp

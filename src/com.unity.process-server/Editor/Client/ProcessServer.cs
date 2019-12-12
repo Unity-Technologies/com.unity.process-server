@@ -6,15 +6,55 @@
     using Interfaces;
     using Ipc;
     using Tasks;
-    using Unity.Editor.ProcessServer.Extensions;
+    using Extensions;
     using Unity.Editor.Tasks.Extensions;
 
+    /// <summary>
+    /// Client interface of the process server.
+    /// </summary>
     public interface IProcessServer
     {
         IProcessServer ConnectSync();
         Task<IProcessServer> Connect();
         void ShutdownSync();
         Task Shutdown();
+
+        /// <summary>
+        /// Runs a native process on the process server, returning all the output when the process is done.
+        /// All callbacks run in the UI thread.
+        /// </summary>
+        IProcessTask<string> NewNativeProcess(string executable, string arguments,
+            ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null,
+            Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None);
+
+        /// <summary>
+        /// Runs a .net process on the process server. The process will be run natively on .net if on Windows
+        /// or Unity's mono if not on Windows, returning all the output when the process is done.
+        /// All callbacks run in the UI thread.
+        /// </summary>
+        IProcessTask<string> NewDotNetProcess(string executable, string arguments,
+            ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null,
+            Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None);
+
+        /// <summary>
+        /// Runs a process on the process server, using Unity's Mono, returning all the output when the process is done.
+        /// All callbacks run in the UI thread.
+        /// </summary>
+        IProcessTask<string> NewMonoProcess(string executable, string arguments,
+            ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null,
+            Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None);
 
         IServer Server { get; }
         IProcessRunner ProcessRunner { get; }
@@ -50,13 +90,11 @@
         private readonly ManualResetEventSlim stopSignal = new ManualResetEventSlim(false);
         private readonly ManualResetEvent completionHandle = new ManualResetEvent(false);
         private readonly Task completionTask;
-
-        private MainThreadSynchronizationContext ourContext;
+        private readonly MainThreadSynchronizationContext ourContext;
+        private readonly IProcessManager localProcessManager;
+        private readonly RemoteProcessManager processManager;
 
         private IpcClient ipcClient;
-
-        private IProcessManager localProcessManager;
-        private RemoteProcessManager processManager;
         private bool shuttingDown;
 
         public ProcessServer(ITaskManager taskManager,
@@ -133,11 +171,106 @@
             if (disposed || shuttingDown) return null;
             if (ipcClient != null) return this;
 
-            ipcClient = await SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token);
+            ipcClient = await SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token).ConfigureAwait(false);
 
             Configure();
             return this;
         }
+
+        public async Task Shutdown()
+        {
+            if (disposed) return;
+            RequestShutdown();
+            await completionTask.ConfigureAwait(false);
+        }
+
+        public void ShutdownSync()
+        {
+            if (disposed) return;
+            RequestShutdown();
+            Completion.WaitOne(500);
+        }
+
+        public IProcessTask<string> NewNativeProcess(string executable, string arguments, ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None)
+        {
+            return ConfigureProcess(
+                new NativeProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment,
+                    executable, arguments,
+                    outputProcessor ?? new SimpleOutputProcessor())
+                    { Affinity = affinity },
+                options, onStart, onOutput, onEnd);
+        }
+
+        public IProcessTask<string> NewDotNetProcess(string executable, string arguments, ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None)
+        {
+            return ConfigureProcess(
+                    new DotNetProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment, Environment,
+                        executable, arguments,
+                        outputProcessor ?? new SimpleOutputProcessor()) { Affinity = affinity },
+                    options, onStart, onOutput, onEnd);
+        }
+
+        public IProcessTask<string> NewMonoProcess(string executable, string arguments, ProcessOptions options = default,
+            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+            IOutputProcessor<string> outputProcessor = null,
+            TaskAffinity affinity = TaskAffinity.None)
+        {
+            return ConfigureProcess(
+                    new MonoProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment, Environment,
+                        executable, arguments,
+                        outputProcessor ?? new SimpleOutputProcessor()) { Affinity = affinity },
+                    options, onStart, onOutput, onEnd);
+        }
+
+        private IProcessTask<string> ConfigureProcess(IProcessTask<string> task, ProcessOptions options,
+            Action<IProcessTask<string>> onStart,
+            Action<IProcessTask<string>, string> onOutput,
+            Action<IProcessTask<string>, string, bool, Exception> onEnd = null
+            )
+        {
+            task.Configure(ProcessManager, options);
+
+            if (onStart != null)
+            {
+                task.OnStartProcess += _ => {
+                    if (TaskManager.InUIThread)
+                        onStart(task);
+                    else
+                        TaskManager.RunInUI(() => onStart(task));
+                };
+            }
+
+            if (onOutput != null)
+            {
+                task.OnOutput += line => {
+                    if (TaskManager.InUIThread)
+                        onOutput(task, line);
+                    else
+                        TaskManager.RunInUI(() => onOutput(task, line));
+                };
+            }
+
+            if (onEnd != null)
+            {
+                task.OnEnd += (t, ret, success, exception) => {
+                    if (TaskManager.InUIThread)
+                        onEnd(t as IProcessTask<string>, ret, success, exception);
+                    else
+                        TaskManager.RunInUI(() => onEnd(t as IProcessTask<string>, ret, success, exception));
+                };
+            }
+            return task;
+        }
+
 
         private IProcessServer InternalConnect()
         {
@@ -161,28 +294,16 @@
             Configuration.Port = ipcClient.Configuration.Port;
         }
 
-        public Task Shutdown()
-        {
-            if (disposed) return Task.CompletedTask;
-            RequestShutdown();
-            return completionTask;
-        }
-
-        public void ShutdownSync()
-        {
-            if (disposed) return;
-            RequestShutdown();
-            Completion.WaitOne(500);
-        }
-
         private void RequestShutdown()
         {
             if (shuttingDown) return;
             shuttingDown = true;
 
-            new Thread(() => {
+            var startedShutdown = new ManualResetEventSlim();
+            ThreadPool.QueueUserWorkItem(started => {
                 try
                 {
+                    ((ManualResetEventSlim)started).Set();
                     Server.Stop().FireAndForget();
                     stopSignal.Wait(1000);
                 }
@@ -190,7 +311,8 @@
                 {
                     Dispose();
                 }
-            }).Start();
+            }, startedShutdown);
+            startedShutdown.Wait();
         }
 
         private ITask<IpcClient> SetupIpcTask()
@@ -256,6 +378,7 @@
         public IProcessRunner ProcessRunner => ipcClient?.GetRemoteTarget<IProcessRunner>();
 
         public WaitHandle Completion => completionHandle;
+        protected bool ShuttingDown => shuttingDown;
 
         class ServerNotifications : IServerNotifications
         {

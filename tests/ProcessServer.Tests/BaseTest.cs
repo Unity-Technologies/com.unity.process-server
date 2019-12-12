@@ -8,15 +8,19 @@ using System.Threading.Tasks;
 namespace BaseTests
 {
     using Unity.Editor.ProcessServer.Internal.IO;
+    using Unity.Editor.Tasks.Extensions;
 
     public partial class BaseTest
 	{
-		public const bool TracingEnabled = false;
+        internal SPath TestAssemblyLocation => System.Reflection.Assembly.GetExecutingAssembly().Location.ToSPath().Parent;
+        internal SPath ServerDirectory => TestAssemblyLocation;
+
+        public const bool TracingEnabled = false;
 
         protected async Task RunTest(Func<IEnumerator> testMethodToRun)
 		{
-			var scheduler = ThreadingHelper.GetUIScheduler(new ThreadSynchronizationContext(default));
-			var taskStart = new Task<IEnumerator>(testMethodToRun);
+            var scheduler = (new ThreadSynchronizationContext(default)).FromSynchronizationContext();
+            var taskStart = new Task<IEnumerator>(testMethodToRun);
 			taskStart.Start(scheduler);
 			var e = await RunOn(testMethodToRun, scheduler);
 			while (await RunOn(s => ((IEnumerator)s).MoveNext(), e, scheduler))
