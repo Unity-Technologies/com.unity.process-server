@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <PropertyGroup>
     <TargetFrameworks>net471;netcoreapp2.2</TargetFrameworks>
     <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\..\'))</RootDir>
@@ -6,7 +6,9 @@
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
     <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
     <PackageId>com.unity.process-server.client</PackageId>
-    <Description>An ipc server that runs and monitors processes for Unity clients.</Description>
+    <AssemblyName>Unity.Editor.ProcessServer.Client</AssemblyName>
+    <DefaultNamespace>$(AssemblyName)</DefaultNamespace>
+    <Description>An rpc server that runs and monitors processes for Unity clients.</Description>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
@@ -20,7 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
     <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
-    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.9" />
+    <PackageReference Include="Unity.Editor.Tasks" Version="1.2.10" />
   </ItemGroup>
 
   <!-- package the sources and version stamp everything only when doing a full build -->

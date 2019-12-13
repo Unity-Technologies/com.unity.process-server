@@ -1,17 +1,17 @@
 root=true
 
-[*.{cs,proto,ts,tsx,ps1,ps}]
-indent_style = space
-indent_size = 4
-insert_final_newline = true
+[*.{cs,ts,tsx,ps1,ps}]
+indent_style=space
+indent_size=tab
+insert_final_newline=true
 trim_trailing_whitespace=true
 
 
-[*.{config,csproj,json,nuspec,props,resxtargets,targets,sh}]
-indent_style = space
-indent_size = 2
-tab_width = 2
-trim_trailing_whitespace=true
+[*.{config,csproj,json,nuspec,props,resxtargets,targets,sh,cmd,md}]
+indent_style=space
+indent_size=2
+tab_width=2
+
 
 [*.cs]
 
@@ -57,6 +57,3 @@ resharper_place_accessorholder_attribute_on_same_line=False
 resharper_space_before_fixed_parentheses=false
 resharper_space_before_lock_parentheses=false
 resharper_space_within_single_line_array_initializer_braces=true
-
-# CS1998: Async method lacks 'await' operators and will run synchronously
-dotnet_diagnostic.CS1998.severity = none
