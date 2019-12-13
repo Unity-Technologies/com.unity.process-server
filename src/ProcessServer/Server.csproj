@@ -3,18 +3,22 @@
     <TargetFramework>net471</TargetFramework>
     <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</RootDir>
     <OutputType>Exe</OutputType>
+    <PackageId>com.unity.process-server.server</PackageId>
     <PublishTo>$(RepoRoot)build\packages\</PublishTo>
     <PackageSource>src\</PackageSource>
     <PackageName>com.unity.process-server</PackageName>
     <PackageSubFolder>\Server~\</PackageSubFolder>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <AssemblyName>processserver</AssemblyName>
+    <AssemblyName>Unity.ProcessServer</AssemblyName>
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
-    <IsPackable>false</IsPackable>
+    <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="lib\**;**\*.meta;*.DotSettings;*.ncrunch*;**\*.asmdef;bin\**;obj\**;LICENSE.md;version.json;package.json" />
+    <None Include="$(RootDir)icon.png" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="icon.png" Condition="Exists('$(RootDir)icon.png')"/>
+    <None Include="$(RootDir)LICENSE.md" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="LICENSE.md" Condition="Exists('$(RootDir)LICENSE.md')"/>
     <None Include="$(RootDir)\common\**" Link="common\%(Filename)%(Extension)" />
   </ItemGroup>
 
@@ -33,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\com.unity.process-server\Editor\Shared\Unity.Editor.ProcessServer.Interfaces.csproj" />
+    <ProjectReference Include="..\com.unity.process-server\Editor\Shared\Shared.csproj" />
   </ItemGroup>
 
   <Import Project="copybinaries.targets" />

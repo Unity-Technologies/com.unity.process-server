@@ -1,5 +1,5 @@
 {
-    "name": "Unity.Editor.ProcessServer.Interfaces",
+    "name": "Unity.ProcessServer.Interfaces",
     "references": [],
     "includePlatforms": [
         "Editor"

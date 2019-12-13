@@ -17,7 +17,7 @@
     <Authors>Unity Technologies</Authors>
     <Owners>Unity Technologies</Owners>
     <Copyright>2019 Unity Technologies. All rights reserved.</Copyright>
-    <PackageProjectUrl>https://github.cds.internal.unity3d.com.com/unity/Unity.Ipc</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Unity-Technologies/com.unity.process-server</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>

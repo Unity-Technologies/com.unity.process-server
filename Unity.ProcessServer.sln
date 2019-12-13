@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29403.142
 MinimumVisualStudioVersion = 15.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Editor.ProcessServer", "src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj", "{9A1AE56A-2729-4537-B069-52BD94A42901}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "src\com.unity.process-server\Editor\Client\Client.csproj", "{9A1AE56A-2729-4537-B069-52BD94A42901}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "src\com.unity.process-server\Editor\Shared\Shared.csproj", "{6941CC84-F8BE-4D17-84DE-201C26C62D6E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "src\ProcessServer\Server.csproj", "{1C1745DB-E9A2-4190-9463-10E553B691E9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{1A1FA84F-8AEF-48EB-80AE-3546CEC878DF}"
 EndProject
@@ -14,10 +18,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Helper.CommandLine", "tests\Helpers\Helper.CommandLine\Helper.CommandLine.csproj", "{0CA6A53B-00C2-4894-B7AC-FA3CBE820E00}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestBase", "tests\Helpers\TestBase\TestBase.csproj", "{8918E2A6-BC1E-4DBD-B07D-5EFE09870FB3}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProcessServer", "src\ProcessServer\ProcessServer.csproj", "{1C1745DB-E9A2-4190-9463-10E553B691E9}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Unity.Editor.ProcessServer.Interfaces", "src\com.unity.process-server\Editor\Shared\Unity.Editor.ProcessServer.Interfaces.csproj", "{6941CC84-F8BE-4D17-84DE-201C26C62D6E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientTestApp", "tests\ClientTestApp\ClientTestApp.csproj", "{F77A3155-C89C-4006-91F0-0782F58DD3CB}"
 EndProject

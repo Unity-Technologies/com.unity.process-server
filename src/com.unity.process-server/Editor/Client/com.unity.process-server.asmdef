@@ -1,7 +1,7 @@
 {
     "name": "com.unity.process-server",
     "references": [
-        "Unity.Editor.ProcessServer.Interfaces",
+        "Unity.ProcessServer.Interfaces",
         "com.unity.editor.tasks",
         "com.unity.ipc",
         "Unity.Ipc.Interfaces"

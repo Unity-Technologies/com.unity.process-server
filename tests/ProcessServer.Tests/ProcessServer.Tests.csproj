@@ -24,8 +24,8 @@
     <PackageReference Include="NUnit3TestAdapter" Version="3.15.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj" />
-    <ProjectReference Include="..\..\src\ProcessServer\ProcessServer.csproj" />
+    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Client.csproj" />
+    <ProjectReference Include="..\..\src\ProcessServer\Server.csproj" />
     <ProjectReference Include="..\Helpers\Helper.CommandLine\Helper.CommandLine.csproj" />
     <ProjectReference Include="..\Helpers\TestBase\TestBase.csproj" />
   </ItemGroup>

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="SpoiledCat.Unity.SimpleIO" Version="1.0.48" />
-    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Unity.Editor.ProcessServer.csproj" />
+    <ProjectReference Include="..\..\src\com.unity.process-server\Editor\Client\Client.csproj" />
   </ItemGroup>
 
 </Project>
