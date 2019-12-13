@@ -5,8 +5,8 @@ namespace BaseTests
 {
     using Microsoft.Extensions.Logging;
     using NSubstitute;
-    using Unity.Editor.ProcessServer.Interfaces;
-    using Unity.Editor.ProcessServer.Server;
+    using Unity.ProcessServer.Interfaces;
+    using Unity.ProcessServer.Server;
     using Unity.Ipc;
 
     public partial class ProcessServerTests : BaseTest

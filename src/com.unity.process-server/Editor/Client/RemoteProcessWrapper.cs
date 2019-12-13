@@ -1,12 +1,11 @@
-﻿namespace Unity.Editor.ProcessServer
+﻿namespace Unity.ProcessServer
 {
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading;
+    using Editor.Tasks;
     using Interfaces;
-    using Tasks;
-
 
     public class RemoteProcessWrapper : BaseProcessWrapper
     {

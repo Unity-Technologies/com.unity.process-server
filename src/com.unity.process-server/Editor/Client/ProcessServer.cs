@@ -1,11 +1,11 @@
-﻿namespace Unity.Editor.ProcessServer
+﻿namespace Unity.ProcessServer
 {
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Editor.Tasks;
     using Interfaces;
     using Ipc;
-    using Tasks;
     using Extensions;
     using Unity.Editor.Tasks.Extensions;
 
@@ -317,7 +317,7 @@
 
         private ITask<IpcClient> SetupIpcTask()
         {
-            return new IpcServerTask(TaskManager, localProcessManager,
+            return new RpcServerTask(TaskManager, localProcessManager,
                                        localProcessManager.DefaultProcessEnvironment,
                                        Environment, Configuration, cts.Token) { Affinity = TaskAffinity.None }
                                    .RegisterRemoteTarget<IServer>()

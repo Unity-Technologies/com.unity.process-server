@@ -9,7 +9,7 @@
     <PackageName>com.unity.process-server</PackageName>
     <PackageSubFolder>\Server~\</PackageSubFolder>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <DefaultNamespace>Unity.Editor.ProcessServer.Server</DefaultNamespace>
+    <DefaultNamespace>Unity.ProcessServer.Server</DefaultNamespace>
     <AssemblyName>Unity.ProcessServer</AssemblyName>
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
     <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>

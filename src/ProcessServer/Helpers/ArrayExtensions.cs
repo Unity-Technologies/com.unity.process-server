@@ -1,4 +1,4 @@
-﻿namespace Unity.Editor.ProcessServer.Server
+﻿namespace Unity.ProcessServer.Server
 {
     using System.Collections;
     using System.Collections.Generic;

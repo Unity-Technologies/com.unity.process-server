@@ -6,7 +6,7 @@
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
     <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
     <PackageId>com.unity.process-server.interfaces</PackageId>
-    <AssemblyName>Unity.Editor.ProcessServer.Interfaces</AssemblyName>
+    <AssemblyName>Unity.ProcessServer.Interfaces</AssemblyName>
     <DefaultNamespace>$(AssemblyName)</DefaultNamespace>
   </PropertyGroup>
   <ItemGroup>

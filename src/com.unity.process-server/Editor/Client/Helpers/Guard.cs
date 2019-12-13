@@ -4,7 +4,7 @@ using System.Linq;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace Unity.Editor.ProcessServer
+namespace Unity.ProcessServer
 {
     [Serializable]
     class InstanceNotInitializedException : InvalidOperationException

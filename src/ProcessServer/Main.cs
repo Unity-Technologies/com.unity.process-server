@@ -2,9 +2,10 @@
 using System.Threading.Tasks;
 using System;
 
-namespace Unity.Editor.ProcessServer.Server
+namespace Unity.ProcessServer.Server
 {
     using System.Diagnostics;
+    using Editor.Tasks;
     using Interfaces;
     using Ipc.Hosted;
     using Ipc.Hosted.Extensions;
@@ -15,12 +16,10 @@ namespace Unity.Editor.ProcessServer.Server
     using Serilog.Core;
     using Serilog.Events;
     using SpoiledCat.Extensions.Configuration;
-    using Tasks;
-    using Tasks.Extensions;
 
     static class Program
     {
-        public async static Task<int> Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             // monitoring when the ipc host shuts down
             var exiting = new ManualResetEventSlim();

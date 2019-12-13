@@ -4,8 +4,8 @@ namespace ClientTestApp
 {
     using System.Diagnostics;
     using System.Threading.Tasks;
-    using Unity.Editor.ProcessServer;
-    using Unity.Editor.ProcessServer.Interfaces;
+    using Unity.ProcessServer;
+    using Unity.ProcessServer.Interfaces;
     using Unity.Editor.Tasks;
     using SpoiledCat.SimpleIO;
     using System.Reflection;

@@ -6,12 +6,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.Editor.Tasks;
-using Unity.Editor.ProcessServer.Internal.IO;
+using Unity.ProcessServer.Internal.IO;
 
 namespace BaseTests
 {
     using System.Runtime.CompilerServices;
-    using Unity.Editor.ProcessServer;
+    using Unity.ProcessServer;
     using Unity.Editor.Tasks.Extensions;
 
     interface ILogging

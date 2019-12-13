@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace BaseTests
 {
-    using Unity.Editor.ProcessServer.Internal.IO;
+    using Unity.ProcessServer.Internal.IO;
     using Unity.Editor.Tasks.Extensions;
 
     public partial class BaseTest

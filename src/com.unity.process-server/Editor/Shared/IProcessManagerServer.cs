@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Unity.Editor.ProcessServer.Interfaces
+namespace Unity.ProcessServer.Interfaces
 {
     using System.Collections.Generic;
     using System.Diagnostics;

@@ -1,7 +1,7 @@
 ﻿using NUnit.Framework;
 using System.Threading.Tasks;
-using Unity.Editor.ProcessServer;
-using Unity.Editor.ProcessServer.Internal.IO;
+using Unity.ProcessServer;
+using Unity.ProcessServer.Internal.IO;
 using Unity.Editor.Tasks;
 
 namespace BaseTests
@@ -9,7 +9,7 @@ namespace BaseTests
     using System;
     using System.Collections;
     using System.Threading;
-    using Unity.Editor.ProcessServer.Interfaces;
+    using Unity.ProcessServer.Interfaces;
 
     public partial class ProcessServerTests : BaseTest
     {
@@ -18,7 +18,7 @@ namespace BaseTests
         {
             using (var test = StartTest())
             {
-                var task = new IpcServerTask(test.TaskManager, test.ProcessManager,
+                var task = new RpcServerTask(test.TaskManager, test.ProcessManager,
                         new ServerConfiguration(ServerDirectory), CancellationToken.None) { Affinity = TaskAffinity.None }
                     .RegisterRemoteTarget<IServer>();
 
@@ -145,7 +145,7 @@ namespace BaseTests
             }
         }
 
-        class TestProcessServer : Unity.Editor.ProcessServer.ProcessServer, IDisposable
+        class TestProcessServer : Unity.ProcessServer.ProcessServer, IDisposable
         {
             public TestProcessServer(ITaskManager taskManager,
                 IEnvironment environment,

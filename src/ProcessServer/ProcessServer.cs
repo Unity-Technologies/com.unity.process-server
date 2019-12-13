@@ -1,4 +1,4 @@
-﻿namespace Unity.Editor.ProcessServer.Server
+﻿namespace Unity.ProcessServer.Server
 {
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -15,8 +15,8 @@
     public class ProcessServer
     {
         private readonly IHostApplicationLifetime app;
-        private TaskCompletionSource<bool> stopped = new TaskCompletionSource<bool>();
-        private Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
+        private readonly TaskCompletionSource<bool> stopped = new TaskCompletionSource<bool>();
+        private readonly Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
         private bool stopping = false;
 
         public ProcessServer(IHostApplicationLifetime app)

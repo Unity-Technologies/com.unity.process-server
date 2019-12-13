@@ -1,4 +1,4 @@
-﻿namespace Unity.Editor.ProcessServer
+﻿namespace Unity.ProcessServer
 {
     using System;
     using System.Collections.Generic;
@@ -8,9 +8,8 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Interfaces;
-    using Tasks;
-    using Tasks.Extensions;
-    using Unity.Editor.ProcessServer.Internal.IO;
+    using Unity.Editor.Tasks;
+    using Unity.ProcessServer.Internal.IO;
 
     public interface IRemoteProcessManager : IProcessManager
     {

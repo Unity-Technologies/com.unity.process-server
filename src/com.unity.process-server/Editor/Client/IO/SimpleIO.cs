@@ -36,7 +36,7 @@
 // http://www.opensource.org/licenses/mit-license.php
 //-----------------------------------------------------------------------
 
-namespace Unity.Editor.ProcessServer.Internal.IO
+namespace Unity.ProcessServer.Internal.IO
 {
     using System;
     using System.Collections.Generic;

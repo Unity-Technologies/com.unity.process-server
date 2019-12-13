@@ -1,15 +1,15 @@
-﻿namespace Unity.Editor.ProcessServer
+﻿namespace Unity.ProcessServer
 {
     using System;
     using System.Collections.Generic;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Editor.Tasks;
     using Ipc;
-    using Tasks;
-    using Unity.Editor.ProcessServer.Internal.IO;
+    using Internal.IO;
 
-    public class IpcServerTask : TaskBase<IpcClient>
+    public class RpcServerTask : TaskBase<IpcClient>
     {
         private readonly IProcessManager processManager;
         private readonly IEnvironment environment;
@@ -23,7 +23,7 @@
 
         private readonly AutoResetEvent signal = new AutoResetEvent(false);
 
-        public IpcServerTask(ITaskManager taskManager,
+        public RpcServerTask(ITaskManager taskManager,
                     IProcessManager processManager,
                     IProcessServerConfiguration configuration,
                     CancellationToken token,
@@ -32,7 +32,7 @@
                 configuration, token, remoteIpcTargets, localIpcTargets)
         {}
 
-        public IpcServerTask(ITaskManager taskManager,
+        public RpcServerTask(ITaskManager taskManager,
                     IProcessManager processManager,
                     IProcessEnvironment processEnvironment,
                     IEnvironment environment,
@@ -57,13 +57,13 @@
             });
         }
 
-        public IpcServerTask RegisterRemoteTarget<T>()
+        public RpcServerTask RegisterRemoteTarget<T>()
         {
             remoteIpcTargets.Add(typeof(T));
             return this;
         }
 
-        public IpcServerTask RegisterLocalTarget(object instance)
+        public RpcServerTask RegisterLocalTarget(object instance)
         {
             localIpcTargets.Add(instance);
             return this;

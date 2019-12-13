@@ -6,7 +6,7 @@ using UnityEditorInternal;
 using System.IO;
 using System;
 
-namespace Unity.Editor.ProcessServer
+namespace Unity.ProcessServer
 {
 
     [AttributeUsage(AttributeTargets.Class)]

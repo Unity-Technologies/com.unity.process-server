@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Unity.Editor.ProcessServer
+namespace Unity.ProcessServer
 {
     using Internal.IO;
 #if !UNITY_EDITOR

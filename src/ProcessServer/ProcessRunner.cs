@@ -1,4 +1,4 @@
-﻿namespace Unity.Editor.ProcessServer.Server
+﻿namespace Unity.ProcessServer.Server
 {
     using System;
     using System.Collections.Generic;
@@ -7,11 +7,11 @@
     using System.Net.Sockets;
     using System.Threading;
     using System.Threading.Tasks;
+    using Editor.Tasks;
     using Extensions;
     using Interfaces;
     using Ipc;
     using Microsoft.Extensions.Logging;
-    using Tasks;
 
     namespace Extensions
     {
@@ -128,8 +128,8 @@
 
             task.OnStartProcess += p => RaiseOnProcessStart(id, p.ProcessId);
             task.OnEnd += (t, _, success, ex) => RaiseOnProcessEnd(id, success, ex, t.Errors);
-            task.OnErrorData += async e => RaiseOnProcessError(id, e);
-            outputProcessor.OnEntry += async line => RaiseOnProcessOutput(id, line);
+            task.OnErrorData += e => RaiseOnProcessError(id, e);
+            outputProcessor.OnEntry += line => RaiseOnProcessOutput(id, line);
 
             if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive)
             {

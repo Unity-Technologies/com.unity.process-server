@@ -6,7 +6,7 @@
     <FullBuild Condition="'$(SolutionName)' == 'Unity.ProcessServer'">true</FullBuild>
     <IsPackable Condition="'$(FullBuild)' != 'true'">false</IsPackable>
     <PackageId>com.unity.process-server.client</PackageId>
-    <AssemblyName>Unity.Editor.ProcessServer.Client</AssemblyName>
+    <AssemblyName>Unity.ProcessServer.Client</AssemblyName>
     <DefaultNamespace>$(AssemblyName)</DefaultNamespace>
     <Description>An rpc server that runs and monitors processes for Unity clients.</Description>
     <CodeAnalysisRuleSet>$(RootDir)src\rules.ruleset</CodeAnalysisRuleSet>
