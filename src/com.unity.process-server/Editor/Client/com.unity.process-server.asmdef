@@ -3,8 +3,8 @@
     "references": [
         "Unity.ProcessServer.Interfaces",
         "com.unity.editor.tasks",
-        "com.unity.ipc",
-        "Unity.Ipc.Interfaces"
+        "com.unity.rpc",
+        "Unity.Rpc.Interfaces"
     ],
     "includePlatforms": [
         "Editor"

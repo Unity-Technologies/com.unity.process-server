@@ -5,8 +5,8 @@
     using System.Threading.Tasks;
     using Editor.Tasks;
     using Interfaces;
-    using Rpc;
     using Extensions;
+    using Rpc;
     using Unity.Editor.Tasks.Extensions;
 
     /// <summary>
