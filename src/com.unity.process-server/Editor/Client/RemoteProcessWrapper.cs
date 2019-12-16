@@ -9,7 +9,7 @@
 
     public class RemoteProcessWrapper : BaseProcessWrapper
     {
-        public event Action<RemoteProcessWrapper, IpcProcess> OnProcessPrepared;
+        public event Action<RemoteProcessWrapper, RpcProcess> OnProcessPrepared;
 
         private IProcessServer server;
         private readonly IOutputProcessor outputProcessor;
@@ -19,7 +19,7 @@
         private Action<Exception, string> onError;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
-        private IpcProcess remoteProcess;
+        private RpcProcess remoteProcess;
         private Exception thrownException = null;
         private readonly List<string> errors = new List<string>();
         private bool detached = false;
@@ -112,17 +112,17 @@
             RaiseOnStart();
         }
 
-        public void OnProcessError(IpcProcessErrorEventArgs e)
+        public void OnProcessError(RpcProcessErrorEventArgs e)
         {
             errors.Add(e.Errors);
         }
 
-        public void OnProcessOutput(IpcProcessOutputEventArgs e)
+        public void OnProcessOutput(RpcProcessOutputEventArgs e)
         {
             outputProcessor.Process(e.Data);
         }
 
-        public void OnProcessEnd(IpcProcessEndEventArgs e)
+        public void OnProcessEnd(RpcProcessEndEventArgs e)
         {
             if (!e.Successful)
                 thrownException = !string.IsNullOrEmpty(e.Exception) ? new ProcessException(e.Exception) : null;

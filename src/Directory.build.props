@@ -35,7 +35,11 @@
   </ItemGroup>
 
   <Target Name="CleanBuildArtifacts" AfterTargets="AfterClean">
-    <RemoveDir Directories="$(PublishTo)$(PackageName);$(OutputPath);$(PackageOutputPath)" />
+    <ItemGroup>
+      <FilesToDelete Condition="'$(PublishTo)$(PackageName)' != ''" Include="$(PublishTo)$(PackageName)\**\*" />
+    </ItemGroup>
+    <Delete Files="@(FilesToDelete)" TreatErrorsAsWarnings="true" />
+    <RemoveDir Directories="$(OutputPath);$(PackageOutputPath)" />
   </Target>
 
 </Project>

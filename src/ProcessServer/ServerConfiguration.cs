@@ -1,6 +1,6 @@
 ﻿namespace Unity.ProcessServer.Server
 {
-    using Ipc;
+    using Rpc;
 
     public class ServerConfiguration : Configuration
     {

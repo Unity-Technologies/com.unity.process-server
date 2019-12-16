@@ -1,20 +1,5 @@
 {
-  "scopedRegistries": [
-    {
-      "name": "Metadata",
-      "url": "http://packages.unity.com",
-      "scopes": [
-        "com.unity.package-manager.metadata"
-      ]
-    },
-    {
-      "name": "Internal",
-      "url": "https://artifactory.internal.unity3d.com/api/npm/core-npm",
-      "scopes": [
-        "com.unity.process-server"
-      ]
-    }
-  ],
+  "registry": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates",
   "dependencies": {
     "com.unity.process-server": "0.1.1-preview",
     "com.unity.process-server.tests": "0.1.1-preview",

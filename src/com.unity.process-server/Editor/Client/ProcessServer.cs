@@ -5,7 +5,7 @@
     using System.Threading.Tasks;
     using Editor.Tasks;
     using Interfaces;
-    using Ipc;
+    using Rpc;
     using Extensions;
     using Unity.Editor.Tasks.Extensions;
 
@@ -94,7 +94,7 @@
         private readonly IProcessManager localProcessManager;
         private readonly RemoteProcessManager processManager;
 
-        private IpcClient ipcClient;
+        private RpcClient ipcClient;
         private bool shuttingDown;
 
         public ProcessServer(ITaskManager taskManager,
@@ -171,8 +171,8 @@
             if (disposed || shuttingDown) return null;
             if (ipcClient != null) return this;
 
-            ipcClient = await SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token).ConfigureAwait(false);
-
+            var task = await SetupRpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token).ConfigureAwait(false);
+            task.Exception?.Rethrow();
             Configure();
             return this;
         }
@@ -277,9 +277,10 @@
             if (disposed || shuttingDown) return null;
             if (ipcClient != null) return this;
 
-            var task = SetupIpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token);
+            var task = SetupRpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token);
             task.Wait();
-            ipcClient = task.Result;
+            task.Result?.Exception?.Rethrow();
+            ipcClient = task.Result?.Result;
 
             Configure();
             return this;
@@ -315,7 +316,7 @@
             startedShutdown.Wait();
         }
 
-        private ITask<IpcClient> SetupIpcTask()
+        private ITask<RpcClient> SetupRpcTask()
         {
             return new RpcServerTask(TaskManager, localProcessManager,
                                        localProcessManager.DefaultProcessEnvironment,
@@ -334,7 +335,7 @@
         }
 
         private void ServerStopping() => stopSignal.Set();
-        private void ProcessRestarting(IpcProcess process, ProcessRestartReason reason) => processManager.RaiseProcessRestart(process, reason);
+        private void ProcessRestarting(RpcProcess process, ProcessRestartReason reason) => processManager.RaiseProcessRestart(process, reason);
 
         private bool disposed;
         protected virtual void Dispose(bool disposing)
@@ -395,7 +396,7 @@
                 return Task.CompletedTask;
             }
 
-            public Task ProcessRestarting(IpcProcess process, ProcessRestartReason reason)
+            public Task ProcessRestarting(RpcProcess process, ProcessRestartReason reason)
             {
                 server.ProcessRestarting(process, reason);
                 return Task.CompletedTask;
@@ -465,13 +466,13 @@
                 return tcs.Task;
             }
 
-            public static async Task<T> StartAwait<T>(this ITask<T> task, int timeout, string timeoutMessage, CancellationToken token)
+            public static async Task<ITask<T>> StartAwait<T>(this ITask<T> task, int timeout, string timeoutMessage, CancellationToken token)
             {
                 var t = Task.Delay(timeout, token);
                 var r = await Task.WhenAny(task.StartAwait(), t).ConfigureAwait(false);
                 if (r == t)
                     throw new TimeoutException(timeoutMessage);
-                return task.Result;
+                return task;
             }
         }
     }

@@ -125,7 +125,7 @@ namespace Unity.ProcessServer
         [SerializeField] private int port;
         [SerializeField] private string executablePath;
 
-        private const string ProcessExecutable = "Packages/com.unity.process-server/Server~/processserver.exe";
+        private const string ProcessExecutable = "Packages/com.unity.process-server/Server~/Unity.ProcessServer.exe";
 
         public int Port
         {

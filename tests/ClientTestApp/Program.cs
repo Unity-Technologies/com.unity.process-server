@@ -10,9 +10,9 @@ namespace ClientTestApp
     using SpoiledCat.SimpleIO;
     using System.Reflection;
 
-    class ServerConfiguration : Unity.Ipc.Configuration, IProcessServerConfiguration
+    class ServerConfiguration : Unity.Rpc.Configuration, IProcessServerConfiguration
     {
-        public const string ProcessExecutableName = "processserver.exe";
+        public const string ProcessExecutableName = "Unity.ProcessServer.exe";
 
         public ServerConfiguration(SPath processServerDirectory)
         {

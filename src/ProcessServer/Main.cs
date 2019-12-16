@@ -7,11 +7,11 @@ namespace Unity.ProcessServer.Server
     using System.Diagnostics;
     using Editor.Tasks;
     using Interfaces;
-    using Ipc.Hosted;
-    using Ipc.Hosted.Extensions;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Hosting;
+    using Rpc.Hosted;
+    using Rpc.Hosted.Extensions;
     using Serilog;
     using Serilog.Core;
     using Serilog.Events;
@@ -43,7 +43,7 @@ namespace Unity.ProcessServer.Server
                     configuration.UnityApplicationPath, configuration.UnityContentsPath);
 
 
-            var host = new IpcHostedServer(configuration)
+            var host = new RpcHostedServer(configuration)
                        .AddRemoteProxy<IServerNotifications>()
                        .AddRemoteProxy<IProcessNotifications>()
                        .AddLocalTarget<ProcessServer.Implementation>()
@@ -91,7 +91,7 @@ namespace Unity.ProcessServer.Server
 
             await host.Start();
 
-            Console.WriteLine($"Port:{host.Ipc.Configuration.Port}");
+            Console.WriteLine($"Port:{host.Rpc.Configuration.Port}");
 
             try
             {

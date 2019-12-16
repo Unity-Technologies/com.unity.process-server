@@ -6,16 +6,16 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Editor.Tasks;
-    using Ipc;
+    using Rpc;
     using Internal.IO;
 
-    public class RpcServerTask : TaskBase<IpcClient>
+    public class RpcServerTask : TaskBase<RpcClient>
     {
         private readonly IProcessManager processManager;
         private readonly IEnvironment environment;
         private readonly IProcessEnvironment processEnvironment;
-        private readonly List<Type> remoteIpcTargets;
-        private readonly List<object> localIpcTargets;
+        private readonly List<Type> remoteRpcTargets;
+        private readonly List<object> localRpcTargets;
         private readonly string executable;
         private readonly string arguments;
         private readonly IOutputProcessor<int> portProcessor;
@@ -27,9 +27,9 @@
                     IProcessManager processManager,
                     IProcessServerConfiguration configuration,
                     CancellationToken token,
-                    List<Type> remoteIpcTargets = null, List<object> localIpcTargets = null)
+                    List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null)
             : this(taskManager, processManager, processManager.DefaultProcessEnvironment, processManager.DefaultProcessEnvironment.Environment,
-                configuration, token, remoteIpcTargets, localIpcTargets)
+                configuration, token, remoteRpcTargets, localRpcTargets)
         {}
 
         public RpcServerTask(ITaskManager taskManager,
@@ -38,15 +38,15 @@
                     IEnvironment environment,
                     IProcessServerConfiguration configuration,
                     CancellationToken token,
-                    List<Type> remoteIpcTargets = null, List<object> localIpcTargets = null)
+                    List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null)
             : base(taskManager, token)
         {
             this.expectedPort = configuration.Port;
             this.processManager = processManager;
             this.processEnvironment = processManager.DefaultProcessEnvironment;
             this.environment = processEnvironment.Environment;
-            this.remoteIpcTargets = remoteIpcTargets ?? new List<Type>();
-            this.localIpcTargets = localIpcTargets ?? new List<object>();
+            this.remoteRpcTargets = remoteRpcTargets ?? new List<Type>();
+            this.localRpcTargets = localRpcTargets ?? new List<object>();
             executable = configuration.ExecutablePath;
             arguments = CreateArguments(environment);
             portProcessor = new BaseOutputProcessor<int>((string line, out int result) => {
@@ -59,13 +59,13 @@
 
         public RpcServerTask RegisterRemoteTarget<T>()
         {
-            remoteIpcTargets.Add(typeof(T));
+            remoteRpcTargets.Add(typeof(T));
             return this;
         }
 
         public RpcServerTask RegisterLocalTarget(object instance)
         {
-            localIpcTargets.Add(instance);
+            localRpcTargets.Add(instance);
             return this;
         }
 
@@ -77,7 +77,7 @@
             return args.ToString();
         }
 
-        protected override IpcClient RunWithReturn(bool success)
+        protected override RpcClient RunWithReturn(bool success)
         {
             var result = base.RunWithReturn(success);
             try
@@ -90,7 +90,7 @@
 
                     try
                     {
-                        var ipcTask = new TPLTask<int, IpcClient>(TaskManager, ConnectToServer) { Affinity = TaskAffinity.None };
+                        var ipcTask = new TPLTask<int, RpcClient>(TaskManager, ConnectToServer) { Affinity = TaskAffinity.None };
 
                         if (port > 0)
                         {
@@ -148,12 +148,12 @@
             return task;
         }
 
-        private async Task<IpcClient> ConnectToServer(int port)
+        private async Task<RpcClient> ConnectToServer(int port)
         {
-            var client = new IpcClient(new Configuration { Port = port }, Token);
-            foreach (var type in remoteIpcTargets)
+            var client = new RpcClient(new Configuration { Port = port }, Token);
+            foreach (var type in remoteRpcTargets)
                 client.RegisterRemoteTarget(type);
-            foreach (var inst in localIpcTargets)
+            foreach (var inst in localRpcTargets)
                 client.RegisterLocalTarget(inst);
             await client.Start();
             return client;

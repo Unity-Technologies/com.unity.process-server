@@ -10,8 +10,8 @@
     using Editor.Tasks;
     using Extensions;
     using Interfaces;
-    using Ipc;
     using Microsoft.Extensions.Logging;
+    using Rpc;
 
     namespace Extensions
     {
@@ -35,7 +35,7 @@
         private readonly ILogger<ProcessRunner> logger;
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
-        private Dictionary<string, IpcProcess> processes = new Dictionary<string, IpcProcess>();
+        private Dictionary<string, RpcProcess> processes = new Dictionary<string, RpcProcess>();
         private Dictionary<string, IProcessTask> tasks = new Dictionary<string, IProcessTask>();
         private Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
         private readonly Dictionary<string, SynchronizationContextTaskScheduler> notifications = new Dictionary<string, SynchronizationContextTaskScheduler>();
@@ -83,7 +83,7 @@
             var startInfo = ProcessInfo.FromStartInfo(task.Wrapper.StartInfo);
 
             var id = startInfo.GetId();
-            var process = new IpcProcess(id, startInfo, options);
+            var process = new RpcProcess(id, startInfo, options);
 
             notifications.Add(id, new SynchronizationContextTaskScheduler(new ThreadSynchronizationContext(cts.Token)));
             processes.AddOrUpdate(id, process);
@@ -98,13 +98,13 @@
         public string Prepare(IRequestContext client, ProcessInfo startInfo, ProcessOptions options)
         {
             var id = startInfo.GetId();
-            var process = new IpcProcess(id, startInfo, options);
+            var process = new RpcProcess(id, startInfo, options);
             notifications.Add(id, new SynchronizationContextTaskScheduler(new ThreadSynchronizationContext(cts.Token)));
             processes.AddOrUpdate(id, process);
             return SetupProcess(client, process);
         }
 
-        private string SetupProcess(IRequestContext client, IpcProcess process)
+        private string SetupProcess(IRequestContext client, RpcProcess process)
         {
             var id = process.Id;
 
@@ -121,7 +121,7 @@
             return id;
         }
 
-        private void HookupProcessHandlers(IRequestContext client, IpcProcess process, string id,
+        private void HookupProcessHandlers(IRequestContext client, RpcProcess process, string id,
             RaiseAndDiscardOutputProcessor outputProcessor, ProcessTask<string> task)
         {
             if (cts.IsCancellationRequested) return;
@@ -248,7 +248,7 @@
             throw new InvalidOperationException("Cannot find process with id " + id);
         }
 
-        public IpcProcess GetProcess(string id)
+        public RpcProcess GetProcess(string id)
         {
             if (processes.TryGetValue(id, out var process))
             {
@@ -257,7 +257,7 @@
             throw new InvalidOperationException("Cannot find process with id " + id);
         }
 
-        private IpcProcess UpdateMonitorOptions(string id, MonitorOptions options)
+        private RpcProcess UpdateMonitorOptions(string id, MonitorOptions options)
         {
             if (processes.TryGetValue(id, out var process))
             {
@@ -275,29 +275,29 @@
             private object args;
             public IProcessNotifications notifications;
 
-            public IpcProcessEndEventArgs EndArgs => (IpcProcessEndEventArgs)args;
-            public IpcProcessOutputEventArgs OutputArgs => (IpcProcessOutputEventArgs)args;
-            public IpcProcessErrorEventArgs ErrorArgs => (IpcProcessErrorEventArgs)args;
-            public IpcProcessEventArgs StartArgs => (IpcProcessEventArgs)args;
+            public RpcProcessEndEventArgs EndArgs => (RpcProcessEndEventArgs)args;
+            public RpcProcessOutputEventArgs OutputArgs => (RpcProcessOutputEventArgs)args;
+            public RpcProcessErrorEventArgs ErrorArgs => (RpcProcessErrorEventArgs)args;
+            public RpcProcessEventArgs StartArgs => (RpcProcessEventArgs)args;
 
-            public NotificationData(IProcessNotifications notifications, IpcProcessEndEventArgs args)
+            public NotificationData(IProcessNotifications notifications, RpcProcessEndEventArgs args)
             {
                 this.notifications = notifications;
                 this.args = args;
             }
-            public NotificationData(IProcessNotifications notifications, IpcProcessOutputEventArgs args)
-            {
-                this.notifications = notifications;
-                this.args = args;
-            }
-
-            public NotificationData(IProcessNotifications notifications, IpcProcessErrorEventArgs args)
+            public NotificationData(IProcessNotifications notifications, RpcProcessOutputEventArgs args)
             {
                 this.notifications = notifications;
                 this.args = args;
             }
 
-            public NotificationData(IProcessNotifications notifications, IpcProcessEventArgs args)
+            public NotificationData(IProcessNotifications notifications, RpcProcessErrorEventArgs args)
+            {
+                this.notifications = notifications;
+                this.args = args;
+            }
+
+            public NotificationData(IProcessNotifications notifications, RpcProcessEventArgs args)
             {
                 this.notifications = notifications;
                 this.args = args;
@@ -322,7 +322,7 @@
                             return 0;
                         },
                         new NotificationData(client.GetRemoteTarget<IProcessNotifications>(),
-                            IpcProcessEventArgs.Get(GetProcess(id))), TaskAffinity.Custom)
+                            RpcProcessEventArgs.Get(GetProcess(id))), TaskAffinity.Custom)
                     .Start(scheduler);
             }
         }
@@ -345,7 +345,7 @@
                             return 0;
                         },
                         new NotificationData(client.GetRemoteTarget<IProcessNotifications>(),
-                            IpcProcessOutputEventArgs.Get(GetProcess(id), line)), TaskAffinity.Custom)
+                            RpcProcessOutputEventArgs.Get(GetProcess(id), line)), TaskAffinity.Custom)
                     .Start(scheduler);
             }
         }
@@ -373,7 +373,7 @@
                             await data.notifications.ProcessOnEnd(data.EndArgs);
                             return 0;
                         }, new NotificationData(client.GetRemoteTarget<IProcessNotifications>(),
-                            IpcProcessEndEventArgs.Get(GetProcess(id), success, ex.GetExceptionMessage(),
+                            RpcProcessEndEventArgs.Get(GetProcess(id), success, ex.GetExceptionMessage(),
                                 (ex as ProcessException)?.ErrorCode ?? 0, ex?.GetType().ToString() ?? string.Empty, errors)),
                         TaskAffinity.Custom)
                     .Start(scheduler);
@@ -398,7 +398,7 @@
                             return 0;
                         },
                         new NotificationData(client.GetRemoteTarget<IProcessNotifications>(),
-                            IpcProcessErrorEventArgs.Get(GetProcess(id), error)), TaskAffinity.Custom)
+                            RpcProcessErrorEventArgs.Get(GetProcess(id), error)), TaskAffinity.Custom)
                     .Start(scheduler);
             }
         }
@@ -452,32 +452,32 @@
                 this.client = client;
             }
 
-            public Task<IpcProcess> Prepare(string executable, string args, string workingDirectory,
+            public Task<RpcProcess> Prepare(string executable, string args, string workingDirectory,
                 ProcessOptions options)
             {
                 var id = owner.Prepare(client, executable, args, options, workingDirectory);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task<IpcProcess> Prepare(string executable, string args, ProcessOptions options)
+            public Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options)
             {
                 var id = owner.Prepare(client, executable, args, options);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task<IpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options)
+            public Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options)
             {
                 var id = owner.Prepare(client, startInfo, options);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task Run(IpcProcess process)
+            public Task Run(RpcProcess process)
             {
                 owner.RunProcess(process.Id);
                 return Task.CompletedTask;
             }
 
-            public Task Stop(IpcProcess process)
+            public Task Stop(RpcProcess process)
             {
                 owner.StopProcess(process.Id);
                 return Task.CompletedTask;

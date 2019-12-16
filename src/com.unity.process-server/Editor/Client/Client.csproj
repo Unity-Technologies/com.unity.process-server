@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
-    <PackageReference Include="Unity.Ipc" Version="1.0.21-preview" />
+    <PackageReference Include="com.unity.rpc" Version="1.0.11-preview" />
     <PackageReference Include="Unity.Editor.Tasks" Version="1.2.10" />
   </ItemGroup>
 

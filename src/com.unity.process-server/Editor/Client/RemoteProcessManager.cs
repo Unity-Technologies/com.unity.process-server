@@ -18,7 +18,7 @@
         T Configure<T>(T processTask, ProcessStartInfo startInfo, ProcessOptions options = default)
             where T : IProcessTask;
 
-        event EventHandler<IpcProcessRestartEventArgs> OnProcessRestart;
+        event EventHandler<RpcProcessRestartEventArgs> OnProcessRestart;
     }
 
 
@@ -45,7 +45,7 @@
         private readonly Dictionary<string, RemoteProcessWrapper> wrappers = new Dictionary<string, RemoteProcessWrapper>();
         private readonly CancellationTokenSource cts;
         private readonly IProcessServer server;
-        public event EventHandler<IpcProcessRestartEventArgs> OnProcessRestart;
+        public event EventHandler<RpcProcessRestartEventArgs> OnProcessRestart;
 
         public RemoteProcessManager(IProcessServer server, IProcessEnvironment environment, CancellationToken token)
         {
@@ -104,7 +104,7 @@
             Dispose();
         }
 
-        private void RaiseProcessOnStart(IpcProcessEventArgs args)
+        private void RaiseProcessOnStart(RpcProcessEventArgs args)
         {
             if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
                 throw new InvalidOperationException($"OnStart for process {args.Process.Id} was called but there's no record of it in the process list.");
@@ -112,12 +112,12 @@
             scheduler.Schedule(s => wrapper.OnProcessStart(), null, cts.Token);
         }
 
-        private void RaiseOnProcessEnd(IpcProcessEndEventArgs args)
+        private void RaiseOnProcessEnd(RpcProcessEndEventArgs args)
         {
             if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
                 throw new InvalidOperationException($"OnEnd for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            var task = new Task(s => wrapper.OnProcessEnd((IpcProcessEndEventArgs)s), args,
+            var task = new Task(s => wrapper.OnProcessEnd((RpcProcessEndEventArgs)s), args,
                 cts.Token, TaskCreationOptions.None);
 
             task.ContinueWith((_, __) => {
@@ -139,28 +139,28 @@
             task.Start(scheduler);
         }
 
-        private void RaiseProcessOnError(IpcProcessErrorEventArgs args)
+        private void RaiseProcessOnError(RpcProcessErrorEventArgs args)
         {
             if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
                 throw new InvalidOperationException($"OnError for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            scheduler.Schedule(s => wrapper.OnProcessError((IpcProcessErrorEventArgs)s), args, cts.Token);
+            scheduler.Schedule(s => wrapper.OnProcessError((RpcProcessErrorEventArgs)s), args, cts.Token);
         }
 
-        private void RaiseProcessOnOutput(IpcProcessOutputEventArgs args)
+        private void RaiseProcessOnOutput(RpcProcessOutputEventArgs args)
         {
             if (!wrappers.TryGetValue(args.Process.Id, out var wrapper) || !processes.TryGetValue(args.Process.Id, out var scheduler))
                 throw new InvalidOperationException($"OnOutput for process {args.Process.Id} was called but there's no record of it in the process list.");
 
-            scheduler.Schedule(s => wrapper.OnProcessOutput((IpcProcessOutputEventArgs)s), args, cts.Token);
+            scheduler.Schedule(s => wrapper.OnProcessOutput((RpcProcessOutputEventArgs)s), args, cts.Token);
         }
 
-        internal void RaiseProcessRestart(IpcProcess process, ProcessRestartReason reason)
+        internal void RaiseProcessRestart(RpcProcess process, ProcessRestartReason reason)
         {
             if (!wrappers.TryGetValue(process.Id, out var wrapper) || !processes.TryGetValue(process.Id, out var scheduler))
                 throw new InvalidOperationException($"OnRestart for process {process.Id} was called but there's no record of it in the process list.");
 
-            scheduler.Schedule(s => OnProcessRestart?.Invoke(this, (IpcProcessRestartEventArgs)s), new IpcProcessRestartEventArgs(process, reason), cts.Token);
+            scheduler.Schedule(s => OnProcessRestart?.Invoke(this, (RpcProcessRestartEventArgs)s), new RpcProcessRestartEventArgs(process, reason), cts.Token);
         }
 
         private bool disposed;
@@ -209,25 +209,25 @@
                 this.manager = manager;
             }
 
-            public Task ProcessOnEnd(IpcProcessEndEventArgs args)
+            public Task ProcessOnEnd(RpcProcessEndEventArgs args)
             {
                 manager.RaiseOnProcessEnd(args);
                 return Task.CompletedTask;
             }
 
-            public Task ProcessOnError(IpcProcessErrorEventArgs args)
+            public Task ProcessOnError(RpcProcessErrorEventArgs args)
             {
                 manager.RaiseProcessOnError(args);
                 return Task.CompletedTask;
             }
 
-            public Task ProcessOnOutput(IpcProcessOutputEventArgs args)
+            public Task ProcessOnOutput(RpcProcessOutputEventArgs args)
             {
                 manager.RaiseProcessOnOutput(args);
                 return Task.CompletedTask;
             }
 
-            public Task ProcessOnStart(IpcProcessEventArgs args)
+            public Task ProcessOnStart(RpcProcessEventArgs args)
             {
                 manager.RaiseProcessOnStart(args);
                 return Task.CompletedTask;

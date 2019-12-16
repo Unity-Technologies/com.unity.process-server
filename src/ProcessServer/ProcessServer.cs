@@ -3,7 +3,7 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
     using Interfaces;
-    using Ipc;
+    using Rpc;
     using Microsoft.Extensions.Hosting;
 
     public enum NotificationType

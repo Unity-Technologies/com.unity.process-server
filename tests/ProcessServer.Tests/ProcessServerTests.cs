@@ -7,7 +7,7 @@ namespace BaseTests
     using NSubstitute;
     using Unity.ProcessServer.Interfaces;
     using Unity.ProcessServer.Server;
-    using Unity.Ipc;
+    using Unity.Rpc;
 
     public partial class ProcessServerTests : BaseTest
     {

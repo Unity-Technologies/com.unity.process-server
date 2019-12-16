@@ -14,11 +14,11 @@ namespace Unity.ProcessServer.Interfaces
 
     public interface IProcessRunner
     {
-        Task<IpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options);
-        Task<IpcProcess> Prepare(string executable, string args, ProcessOptions options);
-        Task<IpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options);
-        Task Run(IpcProcess process);
-        Task Stop(IpcProcess process);
+        Task<RpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options);
+        Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options);
+        Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options);
+        Task Run(RpcProcess process);
+        Task Stop(RpcProcess process);
     }
 
     public enum MonitorOptions
@@ -135,25 +135,25 @@ namespace Unity.ProcessServer.Interfaces
         /// </summary>
         Task ServerStopping();
 
-        Task ProcessRestarting(IpcProcess process, ProcessRestartReason reason);
+        Task ProcessRestarting(RpcProcess process, ProcessRestartReason reason);
     }
 
     public interface IProcessNotifications
     {
-        Task ProcessOnStart(IpcProcessEventArgs args);
-        Task ProcessOnEnd(IpcProcessEndEventArgs args);
-        Task ProcessOnOutput(IpcProcessOutputEventArgs args);
-        Task ProcessOnError(IpcProcessErrorEventArgs args);
+        Task ProcessOnStart(RpcProcessEventArgs args);
+        Task ProcessOnEnd(RpcProcessEndEventArgs args);
+        Task ProcessOnOutput(RpcProcessOutputEventArgs args);
+        Task ProcessOnError(RpcProcessErrorEventArgs args);
     }
 
     [Serializable]
-    public struct IpcProcess
+    public struct RpcProcess
     {
         public string Id;
         public ProcessInfo StartInfo;
         public ProcessOptions ProcessOptions;
 
-        public IpcProcess(string id, ProcessInfo startInfo, ProcessOptions processOptions)
+        public RpcProcess(string id, ProcessInfo startInfo, ProcessOptions processOptions)
         {
             Id = id;
             StartInfo = startInfo;
@@ -162,27 +162,27 @@ namespace Unity.ProcessServer.Interfaces
     }
 
     [Serializable]
-    public struct IpcProcessEventArgs
+    public struct RpcProcessEventArgs
     {
-        public IpcProcess Process;
+        public RpcProcess Process;
 
-        public static IpcProcessEventArgs Get(IpcProcess process)
+        public static RpcProcessEventArgs Get(RpcProcess process)
         {
-            return new IpcProcessEventArgs {
+            return new RpcProcessEventArgs {
                 Process = process,
             };
         }
     }
 
     [Serializable]
-    public struct IpcProcessErrorEventArgs
+    public struct RpcProcessErrorEventArgs
     {
-        public IpcProcess Process;
+        public RpcProcess Process;
         public string Errors;
 
-        public static IpcProcessErrorEventArgs Get(IpcProcess process, string errors)
+        public static RpcProcessErrorEventArgs Get(RpcProcess process, string errors)
         {
-            return new IpcProcessErrorEventArgs {
+            return new RpcProcessErrorEventArgs {
                 Process = process,
                 Errors = errors,
             };
@@ -190,30 +190,30 @@ namespace Unity.ProcessServer.Interfaces
     }
 
     [Serializable]
-    public struct IpcProcessOutputEventArgs
+    public struct RpcProcessOutputEventArgs
     {
-        public IpcProcess Process;
+        public RpcProcess Process;
         public string Data;
 
-        public static IpcProcessOutputEventArgs Get(IpcProcess process, string data)
+        public static RpcProcessOutputEventArgs Get(RpcProcess process, string data)
         {
-            return new IpcProcessOutputEventArgs { Process = process, Data = data, };
+            return new RpcProcessOutputEventArgs { Process = process, Data = data, };
         }
     }
 
     [Serializable]
-    public struct IpcProcessEndEventArgs
+    public struct RpcProcessEndEventArgs
     {
-        public IpcProcess Process;
+        public RpcProcess Process;
         public bool Successful;
         public string Exception;
         public string Errors;
         public int ErrorCode;
         public string ExceptionType;
 
-        public static IpcProcessEndEventArgs Get(IpcProcess process, bool success, string exception, int errorCode, string exceptionType, string errors)
+        public static RpcProcessEndEventArgs Get(RpcProcess process, bool success, string exception, int errorCode, string exceptionType, string errors)
         {
-            return new IpcProcessEndEventArgs {
+            return new RpcProcessEndEventArgs {
                 Process = process,
                 Successful = success,
                 Exception = exception,
@@ -225,12 +225,12 @@ namespace Unity.ProcessServer.Interfaces
     }
 
     [Serializable]
-    public struct IpcProcessRestartEventArgs
+    public struct RpcProcessRestartEventArgs
     {
-        public IpcProcess Process;
+        public RpcProcess Process;
         public ProcessRestartReason Reason;
 
-        public IpcProcessRestartEventArgs(IpcProcess process, ProcessRestartReason reason)
+        public RpcProcessRestartEventArgs(RpcProcess process, ProcessRestartReason reason)
         {
             Process = process;
             Reason = reason;

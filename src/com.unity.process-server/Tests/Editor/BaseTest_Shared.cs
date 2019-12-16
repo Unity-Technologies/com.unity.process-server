@@ -23,9 +23,9 @@ namespace BaseTests
         void Trace(string message, params object[] objects);
     }
 
-    class ServerConfiguration : Unity.Ipc.Configuration, IProcessServerConfiguration
+    class ServerConfiguration : Unity.Rpc.Configuration, IProcessServerConfiguration
     {
-        public const string ProcessExecutableName = "processserver.exe";
+        public const string ProcessExecutableName = "Unity.ProcessServer.exe";
 
         public ServerConfiguration(string processServerDirectory)
         {

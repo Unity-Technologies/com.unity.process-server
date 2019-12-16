@@ -14,8 +14,8 @@
     "revision": ""
   },
   "dependencies": {
-    "com.unity.ipc": "1.0.21-preview",
-    "com.unity.editor.tasks": "1.2.9"
+    "com.unity.rpc": "1.0.11-preview",
+    "com.unity.editor.tasks": "1.2.10"
   },
   "testPackages": {
     "com.unity.process-server.tests": "0.0.0-placeholder"
