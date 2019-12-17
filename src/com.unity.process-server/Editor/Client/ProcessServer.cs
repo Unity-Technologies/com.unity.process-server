@@ -128,7 +128,12 @@
             TaskManager = taskManager;
 
             if (configuration == null)
-                configuration = new ApplicationConfigurationWrapper(TaskManager, ApplicationConfiguration.Instance);
+            {
+	            configuration = new ApplicationConfigurationWrapper(TaskManager, ApplicationConfiguration.Instance);
+	            // read the executable path up front so it gets serialized if it needs to, while we're on the main thread
+	            var _ = configuration.ExecutablePath;
+
+            }
 
             Configuration = configuration;
 
