@@ -19,7 +19,6 @@ public class RunAProcess : MonoBehaviour
     {
         var processServer = ProcessServer.Get();
 
-
         Debug.Log("Running out-of-process");
 
         var expectedResult = "result!";
@@ -31,7 +30,7 @@ public class RunAProcess : MonoBehaviour
 
                              Debug.Log(result);
                          },
-                         outputProcessor: new FirstNonNullLineOutputProcessor<string>())
+                         outputProcessor: new FirstNonNullOutputProcessor<string>())
                      .Start();
     }
 }

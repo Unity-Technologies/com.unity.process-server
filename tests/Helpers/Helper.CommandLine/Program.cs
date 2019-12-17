@@ -67,17 +67,6 @@
                     Thread.Sleep(sleepms);
                 }
 
-                if (block)
-                {
-                    while (true)
-                    {
-                        if (readInputToEof)
-                        {
-                            Console.WriteLine(Console.ReadLine());
-                        }
-                    }
-                }
-
                 if (readInputToEof)
                 {
                     string line;
@@ -105,6 +94,18 @@
                 {
                     throw new InvalidOperationException();
                 }
+
+                if (block)
+                {
+	                while (true)
+	                {
+		                if (readInputToEof)
+		                {
+			                Console.WriteLine(Console.ReadLine());
+		                }
+	                }
+                }
+
             } while (--loop > 0);
             return retCode;
 		}

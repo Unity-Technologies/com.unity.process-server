@@ -8,6 +8,7 @@ namespace BaseTests
 {
     using System;
     using System.Collections;
+    using System.Collections.Generic;
     using System.Threading;
     using Unity.ProcessServer.Interfaces;
 
@@ -19,7 +20,7 @@ namespace BaseTests
             using (var test = StartTest())
             {
                 var task = new RpcServerTask(test.TaskManager, test.ProcessManager,
-                        new ServerConfiguration(ServerDirectory), CancellationToken.None) { Affinity = TaskAffinity.None }
+                        new ServerConfiguration(ServerDirectory)) { Affinity = TaskAffinity.None }
                     .RegisterRemoteTarget<IServer>();
 
                 foreach (var frame in WaitForCompletion(task.StartAwait())) yield return frame;
@@ -63,7 +64,7 @@ namespace BaseTests
                 new ServerConfiguration(ServerDirectory)))
             {
                 var task = processServer.NewDotNetProcess(TestApp, "-d done",
-                    outputProcessor: new FirstNonNullLineOutputProcessor<string>())
+                    outputProcessor: new FirstNonNullOutputProcessor<string>())
                                         .Start();
 
                 var timeout = Task.Delay(4000);
@@ -92,9 +93,10 @@ namespace BaseTests
                         restarted.TrySetResult(args.Reason);
                 };
 
-                var task = processServer.NewDotNetProcess(TestApp, "-s 200", new ProcessOptions(MonitorOptions.KeepAlive),
-                    t => t.Detach()
-                    ).Start();
+                var task = processServer.NewDotNetProcess(TestApp, "-s 200",
+	                new ProcessOptions(MonitorOptions.KeepAlive),
+                    onStart: t => t.Detach()
+	                ).Start();
 
                 var timeout = Task.Delay(4000);
                 var wait = Task.WhenAny(task.Task, timeout);
@@ -119,7 +121,7 @@ namespace BaseTests
 
                 var task = new ProcessTask<string>(test.TaskManager,
                             test.ProcessManager.DefaultProcessEnvironment,
-                            TestApp, "-s 100", new SimpleOutputProcessor()) { Affinity = TaskAffinity.None };
+                            TestApp, "-s 100", new StringOutputProcessor()) { Affinity = TaskAffinity.None };
                 task.Configure(processServer.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive, true));
 
                 var restartCount = 0;
@@ -143,6 +145,90 @@ namespace BaseTests
 
                 Assert.AreEqual(ProcessRestartReason.KeepAlive, restarted.Task.Result);
             }
+        }
+
+        [CustomUnityTest]
+        public IEnumerator CanReconnectToKeepAliveProcess()
+        {
+	        using (var test = StartTest())
+	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
+		        new ServerConfiguration(ServerDirectory)))
+	        {
+		        processServer.ConnectSync();
+
+		        var expected = 0;
+		        var task = processServer.NewNativeProcess(TestApp, "-b", new ProcessOptions(MonitorOptions.KeepAlive),
+			        onStart: t => {
+				        expected = t.ProcessId;
+				        t.Detach();
+			        });
+
+		        task.Start();
+
+		        foreach (var frame in WaitForCompletion(task)) yield return frame;
+
+		        task.Dispose();
+
+                var actual = 0;
+				task = processServer.NewNativeProcess(TestApp, "-b", new ProcessOptions(MonitorOptions.KeepAlive),
+					onStart: t => {
+						actual = t.ProcessId;
+						t.Detach();
+					});
+
+                task.Start();
+
+                foreach (var frame in WaitForCompletion(task)) yield return frame;
+
+                task.Dispose();
+                Assert.AreEqual(expected, actual);
+	        }
+        }
+
+        [CustomUnityTest]
+        public IEnumerator CanReplay()
+        {
+	        using (var test = StartTest())
+	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
+		        new ServerConfiguration(ServerDirectory)))
+	        {
+		        processServer.ConnectSync();
+
+		        var expectedId = 0;
+		        var expectedOutput = new List<string>();
+		        var task = processServer.NewDotNetProcess(TestApp, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+			        onOutput: (t, s) => {
+                        expectedId = t.ProcessId;
+                        expectedOutput.Add(s);
+				        t.Detach();
+			        });
+
+
+
+		        task.Start();
+
+		        foreach (var frame in WaitForCompletion(task)) yield return frame;
+
+		        task.Dispose();
+
+		        var actualId = 0;
+		        var actualOutput = new List<string>();
+                task = processServer.NewDotNetProcess(TestApp, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+			        onOutput: (t, s) => {
+				        actualId = t.ProcessId;
+                        actualOutput.Add(s);
+				        t.Detach();
+			        });
+
+                task.Start();
+
+		        foreach (var frame in WaitForCompletion(task)) yield return frame;
+
+		        task.Dispose();
+		        Assert.Greater(expectedId, 0);
+		        Assert.AreEqual(expectedId, actualId);
+		        actualOutput.Matches(expectedOutput);
+	        }
         }
 
         class TestProcessServer : Unity.ProcessServer.ProcessServer, IDisposable

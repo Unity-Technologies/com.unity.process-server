@@ -107,23 +107,28 @@
             }
         }
 
-        public void OnProcessStart()
+        public void OnProcessStart(RpcProcessEventArgs args)
         {
+	        ProcessId = args.Process.ProcessId;
             RaiseOnStart();
         }
 
         public void OnProcessError(RpcProcessErrorEventArgs e)
         {
+	        if (disposed) return;
             errors.Add(e.Errors);
         }
 
         public void OnProcessOutput(RpcProcessOutputEventArgs e)
         {
+	        if (disposed) return;
             outputProcessor.Process(e.Data);
         }
 
         public void OnProcessEnd(RpcProcessEndEventArgs e)
         {
+	        if (disposed) return;
+
             if (!e.Successful)
                 thrownException = !string.IsNullOrEmpty(e.Exception) ? new ProcessException(e.Exception) : null;
 

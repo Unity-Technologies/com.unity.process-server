@@ -36,6 +36,12 @@ namespace BaseTests
         }
 
         [Test]
+        public async Task CanReplay_()
+        {
+	        await RunTest(CanReplay);
+        }
+
+        [Test]
         public async Task Server_CanRestartProcess()
         {
             using (var test = StartTest())
@@ -53,7 +59,7 @@ namespace BaseTests
                     await runner.RunProcess(id).Task;
 
                     await Task.Delay(100);
-                    await notifications.Received().ProcessRestarting(runner.GetProcess(id), ProcessRestartReason.KeepAlive);
+                    await notifications.Received().ProcessRestarting(Arg.Any<RpcProcess>(), ProcessRestartReason.KeepAlive);
                     await runner.StopProcess(id).Task;
                 }
             }

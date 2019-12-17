@@ -2,7 +2,8 @@
 
 namespace ClientTestApp
 {
-    using System.Diagnostics;
+	using System.Collections.Generic;
+	using System.Diagnostics;
     using System.Threading.Tasks;
     using Unity.ProcessServer;
     using Unity.ProcessServer.Interfaces;
@@ -38,68 +39,111 @@ namespace ClientTestApp
             buildDir = buildDir.Combine("packages/com.unity.process-server/Server~");
 
             var server = ProcessServer.Get(configuration: new ServerConfiguration(buildDir));
-
+            await server.Connect();
 
             Console.WriteLine("Got server, hit any key to continue");
             Console.ReadLine();
 
-            var ret = new DotNetProcessTask(server.TaskManager,
-                server.Environment,
-                app, "-s 200") { Affinity = TaskAffinity.None };
+            //var ret = new DotNetProcessTask(server.TaskManager,
+            // server.Environment,
+            // app, "-d done") { Affinity = TaskAffinity.None };
+            //ret.Configure(server.ProcessManager);
 
-            var restarted = new TaskCompletionSource<ProcessRestartReason>();
+            //ret.OnStartProcess += _ => { Console.WriteLine("OnStartProcess"); };
+            //ret.OnEndProcess += _ => { Console.WriteLine("OnEndProcess"); };
+            //ret.OnOutput += s => { Console.WriteLine(s); };
 
-            ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
-            ret.OnStartProcess += _ => ret.Detach();
+            //await ret.StartAwait();
 
-            var restartCount = 0;
+            //var ret = new DotNetProcessTask(server.TaskManager,
+            //    server.Environment,
+            //    app, "-s 200") { Affinity = TaskAffinity.None };
 
-            server.ProcessManager.OnProcessRestart += (sender, e) => {
-                ret.Detach();
-                restartCount++;
-                if (restartCount == 2)
-                    restarted.TrySetResult(e.Reason);
-            };
+            //var restarted = new TaskCompletionSource<ProcessRestartReason>();
+
+            //ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
+            //ret.OnStartProcess += _ => ret.Detach();
+
+            //var restartCount = 0;
+
+            //server.ProcessManager.OnProcessRestart += (sender, e) => {
+            //    ret.Detach();
+            //    restartCount++;
+            //    if (restartCount == 2)
+            //        restarted.TrySetResult(e.Reason);
+            //};
 
 
-            var done = await Task.WhenAny(restarted.Task, ret.Finally((_, __) => { }).Start().Task);
+            //var done = await Task.WhenAny(restarted.Task, ret.Finally((_, __) => { }).Start().Task);
 
-            if (ret.Successful)
-                Console.WriteLine($"restarted {restartCount} times");
-            else
-                Console.WriteLine($"process failed {ret.Exception}");
+            //if (ret.Successful)
+            //    Console.WriteLine($"restarted {restartCount} times");
+            //else
+            //    Console.WriteLine($"process failed {ret.Exception}");
 
-            Console.WriteLine("Running app with data");
-            Console.ReadLine();
+            //Console.WriteLine("Running app with data");
+            //Console.ReadLine();
 
             //ret = new DotNetProcessTask(server.TaskManager,
-            //    server.Environment,
-            //    "../../Helper.CommandLine/Debug/net471/Helper.CommandLine.exe", "-s 200");
-            //ret.Configure(server.ProcessManager, new ProcessOptions(MonitorOptions.KeepAlive));
+            //    server.ProcessManager,
+            //    app, "-d 1") { Affinity = TaskAffinity.None };
 
-            ret = new DotNetProcessTask(server.TaskManager,
-                server.ProcessManager,
-                app, "-d 1") { Affinity = TaskAffinity.None };
+            //ret.OnStartProcess += (a1) => {
+            //    Console.WriteLine($"OnStartProcess {a1}");
+            //};
+            //ret.OnOutput += line => { Console.WriteLine(line); };
+            //ret.OnEndProcess += (a1) => {
+            //    Console.WriteLine($"OnEndProcess {a1}");
+            //};
 
-            ret.OnStartProcess += (a1) => {
-                Console.WriteLine($"OnStartProcess {a1}");
-            };
-            ret.OnOutput += line => { Console.WriteLine(line); };
-            ret.OnEndProcess += (a1) => {
-                Console.WriteLine($"OnEndProcess {a1}");
-            };
+            //var data = await ret.Finally((_, __, r) => r).Start().Task;
 
-            var data = await ret.Finally((_, __, r) => r).Start().Task;
+            //if (!ret.Successful)
+            //    Console.WriteLine($"process failed {ret.Exception}");
+            //else
+            //    Console.WriteLine($"data: {data}");
 
-            if (!ret.Successful)
-                Console.WriteLine($"process failed {ret.Exception}");
-            else
-                Console.WriteLine($"data: {data}");
+
+            Console.WriteLine("Reconnecting to keep alive");
+            Console.ReadLine();
+
+            var expectedId = 0;
+            var expectedOutput = new List<string>();
+            var actualId = 0;
+            var actualOutput = new List<string>();
+
+            var task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+             onStart: t => {
+                 Console.WriteLine($"onStart 1 called with pid {t.ProcessId}");
+                 expectedId = t.ProcessId;
+             },
+             onOutput: (t, s) => {
+	             Console.WriteLine($"OnOutput 1 {t.ProcessId} {s}");
+	             expectedOutput.Add(s);
+	             t.Detach();
+             });
+
+            await task.StartAwait();
+
+            task.Dispose();
+
+            task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+	            onStart: t => {
+		            Console.WriteLine($"onStart 2 called with pid {t.ProcessId}");
+		            actualId = t.ProcessId;
+	            },
+	            onOutput: (t, s) => {
+		            Console.WriteLine($"OnOutput 2 {t.ProcessId} {s}");
+		            actualOutput.Add(s);
+		            t.Detach();
+	            });
+
+            await task.StartAwait();
 
             Console.WriteLine("Press any key to exit");
             Console.ReadLine();
 
-            ret.Dispose();
+            //ret.Dispose();
             await server.Shutdown();
         }
     }

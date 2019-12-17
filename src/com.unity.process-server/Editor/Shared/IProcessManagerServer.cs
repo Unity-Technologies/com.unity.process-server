@@ -5,6 +5,7 @@ namespace Unity.ProcessServer.Interfaces
 {
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
     using System.Text;
 
     public interface IServer
@@ -19,6 +20,7 @@ namespace Unity.ProcessServer.Interfaces
         Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options);
         Task Run(RpcProcess process);
         Task Stop(RpcProcess process);
+        Task Detach(RpcProcess process);
     }
 
     public enum MonitorOptions
@@ -40,24 +42,6 @@ namespace Unity.ProcessServer.Interfaces
         public bool CreateNoWindow;
         public string Arguments;
         public ProcessWindowStyle WindowStyle;
-
-        public string GetId()
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0}-{1}-{2}-{3}-{4}{5}{6}{7}{8}{9}",
-                WorkingDirectory?.ToUpperInvariant().GetHashCode() ?? 0,
-                FileName?.ToUpperInvariant().GetHashCode() ?? 0,
-                Arguments?.ToUpperInvariant().GetHashCode() ?? 0,
-                Environment.GetHashCode(),
-                UseShellExecute.GetHashCode(),
-                RedirectStandardError.GetHashCode(),
-                RedirectStandardOutput.GetHashCode(),
-                RedirectStandardInput.GetHashCode(),
-                CreateNoWindow.GetHashCode(),
-                WindowStyle.GetHashCode());
-
-            return sb.ToString();
-        }
 
         public static ProcessInfo FromStartInfo(ProcessStartInfo startInfo)
         {
@@ -152,12 +136,14 @@ namespace Unity.ProcessServer.Interfaces
         public string Id;
         public ProcessInfo StartInfo;
         public ProcessOptions ProcessOptions;
+        public int ProcessId;
 
         public RpcProcess(string id, ProcessInfo startInfo, ProcessOptions processOptions)
         {
             Id = id;
             StartInfo = startInfo;
             ProcessOptions = processOptions;
+            ProcessId = 0;
         }
     }
 

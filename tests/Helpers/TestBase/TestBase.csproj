@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="NUnit" Version="3.12.0" />
     <PackageReference Include="SpoiledCat.Unity.Logging" Version="1.0.48" />
-    <PackageReference Include="com.unity.editor.tasks" Version="1.2.12" />
+    <PackageReference Include="com.unity.editor.tasks" Version="1.2.17" />
   </ItemGroup>
 
 </Project>

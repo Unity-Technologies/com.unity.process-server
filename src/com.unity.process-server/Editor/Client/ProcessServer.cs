@@ -23,38 +23,47 @@
         /// Runs a native process on the process server, returning all the output when the process is done.
         /// All callbacks run in the UI thread.
         /// </summary>
-        IProcessTask<string> NewNativeProcess(string executable, string arguments,
-            ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null,
-            Action<IProcessTask<string>, string> onOutput = null,
-            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-            IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None);
+        IProcessTask<string> NewNativeProcess(string executable,
+	        string arguments,
+	        ProcessOptions options = default,
+	        string workingDir = default,
+	        Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
+	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+	        IOutputProcessor<string> outputProcessor = null,
+	        TaskAffinity affinity = TaskAffinity.None,
+	        CancellationToken token = default);
 
         /// <summary>
         /// Runs a .net process on the process server. The process will be run natively on .net if on Windows
         /// or Unity's mono if not on Windows, returning all the output when the process is done.
         /// All callbacks run in the UI thread.
         /// </summary>
-        IProcessTask<string> NewDotNetProcess(string executable, string arguments,
-            ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null,
-            Action<IProcessTask<string>, string> onOutput = null,
-            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-            IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None);
+        IProcessTask<string> NewDotNetProcess(string executable,
+	        string arguments,
+	        ProcessOptions options = default,
+	        string workingDir = default,
+	        Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
+	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+	        IOutputProcessor<string> outputProcessor = null,
+	        TaskAffinity affinity = TaskAffinity.None,
+	        CancellationToken token = default);
 
         /// <summary>
         /// Runs a process on the process server, using Unity's Mono, returning all the output when the process is done.
         /// All callbacks run in the UI thread.
         /// </summary>
-        IProcessTask<string> NewMonoProcess(string executable, string arguments,
-            ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null,
-            Action<IProcessTask<string>, string> onOutput = null,
-            Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-            IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None);
+        IProcessTask<string> NewMonoProcess(string executable,
+	        string arguments,
+	        ProcessOptions options = default,
+	        string workingDir = default,
+	        Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
+	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
+	        IOutputProcessor<string> outputProcessor = null,
+	        TaskAffinity affinity = TaskAffinity.None,
+	        CancellationToken token = default);
 
         IServer Server { get; }
         IProcessRunner ProcessRunner { get; }
@@ -178,6 +187,7 @@
 
             var task = await SetupRpcTask().StartAwait(ConnectionTimeout, "Timeout connecting to process server", cts.Token).ConfigureAwait(false);
             task.Exception?.Rethrow();
+            ipcClient = task.Result;
             Configure();
             return this;
         }
@@ -196,53 +206,68 @@
             Completion.WaitOne(500);
         }
 
-        public IProcessTask<string> NewNativeProcess(string executable, string arguments, ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+        public IProcessTask<string> NewNativeProcess(string executable, string arguments,
+	        ProcessOptions options = default,
+	        string workingDir = default,
+            Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
             Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
             IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None)
+            TaskAffinity affinity = TaskAffinity.None,
+            CancellationToken token = default
+	        )
         {
             return ConfigureProcess(
                 new NativeProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment,
                     executable, arguments,
-                    outputProcessor ?? new SimpleOutputProcessor())
+                    outputProcessor ?? new StringOutputProcessor(), token)
                     { Affinity = affinity },
-                options, onStart, onOutput, onEnd);
+                options, workingDir, onStart, onOutput, onEnd);
         }
 
-        public IProcessTask<string> NewDotNetProcess(string executable, string arguments, ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+        public IProcessTask<string> NewDotNetProcess(string executable, string arguments,
+	        ProcessOptions options = default,
+	        string workingDir = default,
+            Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
             Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
             IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None)
+            TaskAffinity affinity = TaskAffinity.None,
+	        CancellationToken token = default
+	        )
         {
             return ConfigureProcess(
                     new DotNetProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment, Environment,
                         executable, arguments,
-                        outputProcessor ?? new SimpleOutputProcessor()) { Affinity = affinity },
-                    options, onStart, onOutput, onEnd);
+                        outputProcessor ?? new StringOutputProcessor()) { Affinity = affinity },
+                    options, workingDir, onStart, onOutput, onEnd);
         }
 
         public IProcessTask<string> NewMonoProcess(string executable, string arguments, ProcessOptions options = default,
-            Action<IProcessTask<string>> onStart = null, Action<IProcessTask<string>, string> onOutput = null,
+	        string workingDir = default,
+            Action<IProcessTask<string>> onStart = null,
+	        Action<IProcessTask<string>, string> onOutput = null,
             Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
             IOutputProcessor<string> outputProcessor = null,
-            TaskAffinity affinity = TaskAffinity.None)
+            TaskAffinity affinity = TaskAffinity.None,
+	        CancellationToken token = default
+			)
         {
             return ConfigureProcess(
                     new MonoProcessTask<string>(TaskManager, localProcessManager.DefaultProcessEnvironment, Environment,
                         executable, arguments,
-                        outputProcessor ?? new SimpleOutputProcessor()) { Affinity = affinity },
-                    options, onStart, onOutput, onEnd);
+                        outputProcessor ?? new StringOutputProcessor()) { Affinity = affinity },
+                    options, workingDir, onStart, onOutput, onEnd);
         }
 
         private IProcessTask<string> ConfigureProcess(IProcessTask<string> task, ProcessOptions options,
+	        string workingDir,
             Action<IProcessTask<string>> onStart,
             Action<IProcessTask<string>, string> onOutput,
-            Action<IProcessTask<string>, string, bool, Exception> onEnd = null
+            Action<IProcessTask<string>, string, bool, Exception> onEnd
             )
         {
-            task.Configure(ProcessManager, options);
+            task.Configure(ProcessManager, options, workingDir);
 
             if (onStart != null)
             {
@@ -325,7 +350,7 @@
         {
             return new RpcServerTask(TaskManager, localProcessManager,
                                        localProcessManager.DefaultProcessEnvironment,
-                                       Environment, Configuration, cts.Token) { Affinity = TaskAffinity.None }
+                                       Environment, Configuration, token: cts.Token) { Affinity = TaskAffinity.None }
                                    .RegisterRemoteTarget<IServer>()
                                    .RegisterRemoteTarget<IProcessRunner>()
                                    .RegisterLocalTarget(notifications)
