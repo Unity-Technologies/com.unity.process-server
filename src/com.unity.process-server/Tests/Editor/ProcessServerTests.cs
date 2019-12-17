@@ -147,7 +147,7 @@ namespace BaseTests
             }
         }
 
-        [CustomUnityTest]
+        //[CustomUnityTest]
         public IEnumerator CanReconnectToKeepAliveProcess()
         {
 	        using (var test = StartTest())

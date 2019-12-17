@@ -41,6 +41,13 @@ namespace BaseTests
 	        await RunTest(CanReplay);
         }
 
+
+        [Test]
+        public async Task CanReconnectToKeepAliveProcess_()
+        {
+	        await RunTest(CanReconnectToKeepAliveProcess);
+        }
+
         [Test]
         public async Task Server_CanRestartProcess()
         {
