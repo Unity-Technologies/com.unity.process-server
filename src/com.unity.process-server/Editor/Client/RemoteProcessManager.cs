@@ -21,7 +21,6 @@
         event EventHandler<RpcProcessRestartEventArgs> OnProcessRestart;
     }
 
-
     class RemoteProcessEnvironment : IProcessEnvironment
     {
         private readonly IProcessEnvironment localProcessEnvironment;

@@ -6,6 +6,7 @@
     using System.Threading;
     using System.Threading.Tasks;
     using Editor.Tasks;
+    using Interfaces;
     using Rpc;
     using Internal.IO;
 
@@ -13,6 +14,7 @@
     {
         private readonly IProcessManager processManager;
         private readonly string workingDir;
+        private readonly ProcessOptions options;
         private readonly IEnvironment environment;
         private readonly IProcessEnvironment processEnvironment;
         private readonly List<Type> remoteRpcTargets;
@@ -22,16 +24,15 @@
         private readonly IOutputProcessor<int> portProcessor;
         private readonly int expectedPort;
 
-        private readonly AutoResetEvent signal = new AutoResetEvent(false);
-
         public RpcServerTask(ITaskManager taskManager,
                     IProcessManager processManager,
                     IProcessServerConfiguration configuration,
                     string workingDir = default,
+					ProcessOptions options = default,
                     List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
                     CancellationToken token = default)
             : this(taskManager, processManager, processManager.DefaultProcessEnvironment, processManager.DefaultProcessEnvironment.Environment,
-                configuration, workingDir, remoteRpcTargets, localRpcTargets, token)
+                configuration, workingDir, options, remoteRpcTargets, localRpcTargets, token)
         {}
 
         public RpcServerTask(ITaskManager taskManager,
@@ -40,6 +41,7 @@
                     IEnvironment environment,
                     IProcessServerConfiguration configuration,
 					string workingDir = default,
+                    ProcessOptions options = default,
                     List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
                     CancellationToken token = default)
             : base(taskManager, token)
@@ -47,6 +49,7 @@
             this.expectedPort = configuration.Port;
             this.processManager = processManager;
             this.workingDir = workingDir;
+            this.options = options;
             this.processEnvironment = processManager.DefaultProcessEnvironment;
             this.environment = processEnvironment.Environment;
             this.remoteRpcTargets = remoteRpcTargets ?? new List<Type>();
@@ -143,11 +146,15 @@
 
         private IProcessTask<int> SetupServerProcess()
         {
-            var task = new DotNetProcessTask<int>(TaskManager, processManager,
-                processEnvironment, environment, executable, arguments,
-                portProcessor, workingDir);
+            var task = new DotNetProcessTask<int>(TaskManager, processEnvironment, environment,
+	            executable, arguments, portProcessor);
 
-            // server returned the port, detach the process
+			if (processManager is IRemoteProcessManager remoteProcessManager)
+				task.Configure(remoteProcessManager, options, workingDir);
+			else
+				task.Configure(processManager, workingDir);
+
+			// server returned the port, detach the process
             task.OnOutput += _ => task.Detach();
             return task;
         }
@@ -162,6 +169,5 @@
             await client.Start();
             return client;
         }
-
     }
 }
