@@ -104,47 +104,47 @@ namespace ClientTestApp
             //    Console.WriteLine($"data: {data}");
 
 
-            Console.WriteLine("Reconnecting to keep alive");
-            Console.ReadLine();
+            //Console.WriteLine("Reconnecting to keep alive");
+            //Console.ReadLine();
 
-            var expectedId = 0;
-            var expectedOutput = new List<string>();
-            var actualId = 0;
-            var actualOutput = new List<string>();
+            //var expectedId = 0;
+            //var expectedOutput = new List<string>();
+            //var actualId = 0;
+            //var actualOutput = new List<string>();
 
-            var task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
-             onStart: t => {
-                 Console.WriteLine($"onStart 1 called with pid {t.ProcessId}");
-                 expectedId = t.ProcessId;
-             },
-             onOutput: (t, s) => {
-	             Console.WriteLine($"OnOutput 1 {t.ProcessId} {s}");
-	             expectedOutput.Add(s);
-	             t.Detach();
-             });
+            //var task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+            // onStart: t => {
+            //     Console.WriteLine($"onStart 1 called with pid {t.ProcessId}");
+            //     expectedId = t.ProcessId;
+            // },
+            // onOutput: (t, s) => {
+	           //  Console.WriteLine($"OnOutput 1 {t.ProcessId} {s}");
+	           //  expectedOutput.Add(s);
+	           //  t.Detach();
+            // });
 
-            await task.StartAwait();
+            //await task.StartAwait();
 
-            task.Dispose();
+            //task.Dispose();
 
-            task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
-	            onStart: t => {
-		            Console.WriteLine($"onStart 2 called with pid {t.ProcessId}");
-		            actualId = t.ProcessId;
-	            },
-	            onOutput: (t, s) => {
-		            Console.WriteLine($"OnOutput 2 {t.ProcessId} {s}");
-		            actualOutput.Add(s);
-		            t.Detach();
-	            });
+            //task = server.NewDotNetProcess(app, "-d done -b", new ProcessOptions(MonitorOptions.KeepAlive),
+	           // onStart: t => {
+		          //  Console.WriteLine($"onStart 2 called with pid {t.ProcessId}");
+		          //  actualId = t.ProcessId;
+	           // },
+	           // onOutput: (t, s) => {
+		          //  Console.WriteLine($"OnOutput 2 {t.ProcessId} {s}");
+		          //  actualOutput.Add(s);
+		          //  t.Detach();
+	           // });
 
-            await task.StartAwait();
+            //await task.StartAwait();
 
             Console.WriteLine("Press any key to exit");
             Console.ReadLine();
 
             //ret.Dispose();
-            await server.Shutdown();
+            //await server.Shutdown();
         }
     }
 }

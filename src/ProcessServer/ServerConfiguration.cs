@@ -9,5 +9,6 @@
         public string UnityVersion { get; set; }
         public string UnityApplicationPath { get; set; }
         public string UnityContentsPath { get; set; }
+        public int Pid { get; set; }
     }
 }

@@ -74,17 +74,20 @@ namespace Unity.ProcessServer.Server
                       .Enrich.FromLogContext()
                       .WriteTo.Console());
 
-            host.ConfigureServices(coll => {
+            host.ConfigureServices(services => {
 
-                coll.AddSingleton<ITaskManager>(taskManager);
-                coll.AddSingleton<IEnvironment>(environment);
-                coll.AddSingleton<IProcessEnvironment>(s => s.GetService<IProcessManager>().DefaultProcessEnvironment);
-                coll.AddSingleton<IProcessManager, ProcessManager>();
-                coll.AddSingleton<ProcessRunner>();
-                coll.AddSingleton<ProcessServer>();
+	            // register the log switch so it can be retrieved and changed by any code
+	            services.AddSingleton(logLevelSwitch);
 
-                // register the log switch so it can be retrieved and changed by any code
-                coll.AddSingleton(logLevelSwitch);
+	            // make the configuration available to everyone
+	            services.AddSingleton(configuration);
+	            services.AddSingleton<ITaskManager>(taskManager);
+	            services.AddSingleton<IEnvironment>(environment);
+	            services.AddSingleton<IProcessEnvironment>(s => s.GetService<IProcessManager>().DefaultProcessEnvironment);
+	            services.AddSingleton<IProcessManager, ProcessManager>();
+	            services.AddSingleton<ProcessRunner>();
+	            services.AddSingleton<ProcessServer>();
+
             });
 
             host.UseConsoleLifetime();

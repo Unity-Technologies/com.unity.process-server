@@ -78,10 +78,12 @@
 
         private static string CreateArguments(IEnvironment environment)
         {
-            var args = new StringBuilder();
-            args.Append("-projectPath ");
-            args.Append(environment.UnityProjectPath.ToSPath().InQuotes());
-            return args.ToString();
+            var args = new List<string>();
+            args.Add("-projectPath");
+            args.Add(environment.UnityProjectPath.ToSPath().InQuotes());
+            args.Add("-pid");
+            args.Add(System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            return string.Join(" ", args);
         }
 
         protected override RpcClient RunWithReturn(bool success)

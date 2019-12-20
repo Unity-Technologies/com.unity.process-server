@@ -1,6 +1,10 @@
 ﻿namespace Unity.ProcessServer.Server
 {
-    using System.Collections.Generic;
+	using System;
+	using System.Collections.Generic;
+	using System.Diagnostics;
+	using System.Linq;
+	using System.Threading;
     using System.Threading.Tasks;
     using Interfaces;
     using Rpc;
@@ -18,11 +22,21 @@
         private readonly TaskCompletionSource<bool> stopped = new TaskCompletionSource<bool>();
         private readonly Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
         private bool stopping = false;
+		private readonly int parentPID;
+		private readonly Timer parentCheckTimer;
+		private readonly TimeSpan checkInterval = TimeSpan.FromSeconds(30);
 
-        public ProcessServer(IHostApplicationLifetime app)
+        public ProcessServer(IHostApplicationLifetime app, ServerConfiguration configuration)
         {
-            this.app = app;
-            app.ApplicationStopping.Register(() => stopped.TrySetResult(true));
+	        parentPID = configuration.Pid;
+	        this.app = app;
+
+	        app.ApplicationStopping.Register(() => stopped.TrySetResult(true));
+
+	        if (parentPID > 0)
+	        {
+		        parentCheckTimer = new Timer(ShutdownIfParentIsGone, null, checkInterval, checkInterval);
+	        }
         }
 
         public void ClientConnecting(IRequestContext context)
@@ -66,6 +80,16 @@
                     });
                     break;
             }
+        }
+
+        private void ShutdownIfParentIsGone(object _)
+        {
+	        var runningProcesses = Process.GetProcesses();
+	        if (!runningProcesses.Any(x => x.Id == parentPID))
+	        {
+		        parentCheckTimer.Dispose();
+		        app.StopApplication();
+	        }
         }
 
         public class Implementation : IServer

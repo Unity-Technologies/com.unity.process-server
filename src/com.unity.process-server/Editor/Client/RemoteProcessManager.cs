@@ -21,23 +21,6 @@
         event EventHandler<RpcProcessRestartEventArgs> OnProcessRestart;
     }
 
-    class RemoteProcessEnvironment : IProcessEnvironment
-    {
-        private readonly IProcessEnvironment localProcessEnvironment;
-
-        public RemoteProcessEnvironment(IProcessEnvironment localProcessEnvironment)
-        {
-            this.localProcessEnvironment = localProcessEnvironment;
-        }
-
-        public void Configure(ProcessStartInfo psi)
-        {
-            localProcessEnvironment.Configure(psi);
-        }
-
-        public IEnvironment Environment => localProcessEnvironment.Environment;
-    }
-
     class RemoteProcessManager : IRemoteProcessManager
     {
         private readonly Dictionary<string, SynchronizationContextTaskScheduler> schedulers = new Dictionary<string, SynchronizationContextTaskScheduler>();
@@ -250,6 +233,23 @@
                 manager.RaiseProcessOnStart(args);
                 return Task.CompletedTask;
             }
+        }
+
+        class RemoteProcessEnvironment : IProcessEnvironment
+        {
+	        private readonly IProcessEnvironment localProcessEnvironment;
+
+	        public RemoteProcessEnvironment(IProcessEnvironment localProcessEnvironment)
+	        {
+		        this.localProcessEnvironment = localProcessEnvironment;
+	        }
+
+	        public void Configure(ProcessStartInfo psi)
+	        {
+		        localProcessEnvironment.Configure(psi);
+	        }
+
+	        public IEnvironment Environment => localProcessEnvironment.Environment;
         }
     }
 }

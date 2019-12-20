@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <PropertyGroup>
     <TargetFrameworks>net471;netcoreapp2.2</TargetFrameworks>
     <RootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\..\'))</RootDir>
