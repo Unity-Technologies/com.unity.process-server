@@ -257,8 +257,11 @@
                 try
                 {
                     ((ManualResetEventSlim)started).Set();
-                    Server.Stop().FireAndForget();
-                    stopSignal.Wait(1000);
+                    if (Server != null)
+                    {
+                        Server.Stop().FireAndForget();
+                        stopSignal.Wait(1000);
+                    }
                 }
                 finally
                 {
