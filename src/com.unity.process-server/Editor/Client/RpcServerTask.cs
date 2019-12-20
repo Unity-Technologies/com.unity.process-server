@@ -149,7 +149,7 @@
         private IProcessTask<int> SetupServerProcess()
         {
             var task = new DotNetProcessTask<int>(TaskManager, processEnvironment, environment,
-	            executable, arguments, portProcessor);
+	            executable, arguments, portProcessor) { Affinity = TaskAffinity.None };
 
 			if (processManager is IRemoteProcessManager remoteProcessManager)
 				task.Configure(remoteProcessManager, options, workingDir);
