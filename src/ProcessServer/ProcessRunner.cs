@@ -15,21 +15,11 @@
 
     public class ProcessRunner : IDisposable
     {
-	    private struct ContextData
-	    {
-		    public RpcProcess Process;
-		    public IProcessTask Task;
-		    public IRequestContext Client;
-		    public RaiseUntilDetachOutputProcess OutputProcessor;
-            public SynchronizationContextTaskScheduler Notifications;
-        }
-
         private readonly ITaskManager taskManager;
         private readonly IProcessManager processManager;
         private readonly IProcessEnvironment processEnvironment;
         private readonly ILogger<ProcessRunner> logger;
         private readonly CancellationTokenSource cts;
-
 
         private ConcurrentDictionary<string, ContextData> processes = new ConcurrentDictionary<string, ContextData>();
 
@@ -44,17 +34,16 @@
             this.processManager = processManager;
             this.processEnvironment = processEnvironment;
             this.logger = logger;
-
         }
 
         public void ClientDisconnecting(IRequestContext context)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
             var reqs = processes.Where(x => x.Value.Client == context).Select(x => x.Key).ToArray();
             foreach (var key in reqs)
             {
-	            RemoveClient(key);
+                RemoveClient(key);
             }
         }
 
@@ -66,155 +55,152 @@
         public string Prepare(IRequestContext client, string executable, string arguments, ProcessOptions options,
             string workingDir = null)
         {
-	        if (cts.IsCancellationRequested) return null;
+            if (cts.IsCancellationRequested) return null;
 
             var outputProcessor = new RaiseUntilDetachOutputProcess();
-
             var task = new NativeProcessListTask<string>(taskManager, processEnvironment, executable, arguments,
                     outputProcessor: outputProcessor, cts.Token)
                 .Configure(processManager, workingDir);
 
             var startInfo = ProcessInfo.FromStartInfo(task.Wrapper.StartInfo);
-
             var id = options.MonitorOptions == MonitorOptions.KeepAlive ? startInfo.GetId() : Guid.NewGuid().ToString();
 
-            if (!processes.TryGetValue(id, out var data))
-            {
-	            data = new ContextData();
-	            data.Client = client;
-                data.Process = new RpcProcess(id, startInfo, options);
-                data.Notifications = new SynchronizationContextTaskScheduler(new ThreadSynchronizationContext(cts.Token));
-                data.Task = task;
-                processes.TryAdd(id, data);
-                processes[id] = data;
-
-                HookupProcessHandlers(client, data.Process, id, outputProcessor, task);
-            }
-            else
-            {
-	            task.Dispose();
-            }
+            SetupProcess(client, new RpcProcess(id, startInfo, options), task, outputProcessor);
 
             return id;
         }
 
         public string Prepare(IRequestContext client, ProcessInfo startInfo, ProcessOptions options)
         {
-	        if (cts.IsCancellationRequested) return null;
+            if (cts.IsCancellationRequested) return null;
 
             var id = options.MonitorOptions == MonitorOptions.KeepAlive ? startInfo.GetId() : Guid.NewGuid().ToString();
-            if (!processes.TryGetValue(id, out var data))
-            {
-	            data = new ContextData();
-		        data.Process = new RpcProcess(id, startInfo, options);
-		        data.Notifications = new SynchronizationContextTaskScheduler(new ThreadSynchronizationContext(cts.Token));
-		        processes.TryAdd(id, data);
-
-		        SetupProcess(client, data.Process);
-	        }
-	        return id;
+            SetupProcess(client, new RpcProcess(id, startInfo, options));
+            return id;
         }
-
 
         public IProcessTask RunProcess(string id)
         {
-	        if (cts.IsCancellationRequested) return null;
+            if (cts.IsCancellationRequested) return null;
 
-	        var task = GetTask(id);
-	        if (task.Task.Status != TaskStatus.Created)
-	        {
-		        ReplayEvents(id);
-		        return task;
-	        }
+            var task = GetTask(id);
+            if (task.Task.Status != TaskStatus.Created)
+            {
+                ReplayEvents(id);
+                return task;
+            }
 
-	        try
-	        {
-		        task.Start();
-	        }
-	        catch (TaskCanceledException)
-	        {
-		        // we're shutting down
-	        }
-	        return task;
+            try
+            {
+                task.Start();
+            }
+            catch (TaskCanceledException)
+            {
+                // we're shutting down
+            }
+            return task;
         }
-
 
         public IProcessTask StopProcess(string id)
         {
-	        if (cts.IsCancellationRequested) return null;
+            if (cts.IsCancellationRequested) return null;
+            if (!processes.TryGetValue(id, out var data)) return null;
 
-	        var process = GetProcess(id);
-	        process.ProcessOptions.MonitorOptions = MonitorOptions.None;
+            data.ManuallyStopped = true;
+            processes[id] = data;
+            var task = data.Task;
+            try
+            {
+                task?.Stop();
+            }
+            catch (TaskCanceledException)
+            {
+                // we're shutting down
+            }
 
-	        var task = GetTask(id);
-	        try
-	        {
-		        task?.Stop();
-	        }
-	        catch (TaskCanceledException)
-	        {
-		        // we're shutting down
-	        }
-
-	        return task;
+            return task;
         }
-
 
         public void Detach(string id)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
-	        if (processes.TryGetValue(id, out var data))
-	        {
-		        data.OutputProcessor.Detach();
-		        data.Task.Detach();
-	        }
+            if (processes.TryGetValue(id, out var data))
+            {
+                data.OutputProcessor.Detach();
+            }
         }
 
-        private string SetupProcess(IRequestContext client, RpcProcess process)
+        private string SetupProcess(IRequestContext client, RpcProcess process,
+            IProcessTask<string, List<string>> task = null, RaiseUntilDetachOutputProcess outputProcessor = null)
         {
             var id = process.Id;
+            ContextData data = default;
 
-            var outputProcessor = new RaiseUntilDetachOutputProcess();
-            var task = new ProcessTaskWithListOutput<string>(taskManager, processEnvironment,
-                outputProcessor: outputProcessor, token: cts.Token);
+            var processExists = processes.TryGetValue(process.Id, out data);
 
-            processManager.Configure(task, process.StartInfo.ToStartInfo());
+            if (task == null && (!processExists || data.Task.IsCompleted))
+            {
+                outputProcessor = new RaiseUntilDetachOutputProcess();
+                task = new ProcessTaskWithListOutput<string>(taskManager, processEnvironment,
+                    outputProcessor: outputProcessor, token: cts.Token);
+                processManager.Configure(task, process.StartInfo.ToStartInfo());
+            }
+            else if (task != null)
+            {
+                task.Dispose();
+                task = null;
+            }
 
-            var data = processes.GetOrAdd(id, (ContextData)default);
+            data = processes.GetOrAdd(id, data);
+
+            data.Process = process;
             data.Client = client;
-            data.Task = task;
-            data.OutputProcessor = outputProcessor;
+            if (task != null)
+            {
+                data.Task = task;
+                data.OutputProcessor = outputProcessor;
+            }
+
+            if (data.Notifications == null)
+                data.Notifications =
+                    new SynchronizationContextTaskScheduler(new ThreadSynchronizationContext(cts.Token));
+
             processes[id] = data;
 
-            HookupProcessHandlers(client, process, id, outputProcessor, task);
+            HookupProcessHandlers(data);
 
             return id;
         }
 
-        private void HookupProcessHandlers(IRequestContext client, RpcProcess process, string id,
-	        RaiseUntilDetachOutputProcess outputProcessor, IProcessTask<string, List<string>> task)
+        private void HookupProcessHandlers(ContextData context)
         {
             if (cts.IsCancellationRequested) return;
+
+            var task = context.Task;
+            var process = context.Process;
+            var id = process.Id;
 
             task.OnStartProcess += p => RaiseOnProcessStart(id, p.ProcessId);
             task.OnEnd += (t, _, success, ex) => RaiseOnProcessEnd(id, success, ex, t.Errors);
             task.OnErrorData += e => RaiseOnProcessError(id, e);
-			task.OnData += line => RaiseOnProcessOutput(id, line);
+            task.OnData += line => RaiseOnProcessOutput(id, line);
 
-            if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive)
+            if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive && !context.ManuallyStopped)
             {
                 // restart the process with the same arguments when it stops
                 var restartTask = new ActionTask(task.TaskManager, (_, ex) => {
-                    if (processes.ContainsKey(id))
+                    if (processes.TryGetValue(id, out var data))
                     {
-                        var p = GetProcess(id);
-                        if (p.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive)
+                        if (data.Process.ProcessOptions.MonitorOptions != MonitorOptions.KeepAlive ||
+                            data.ManuallyStopped)
                         {
-	                        processes.TryRemove(id, out var _);
-                            return;
+                            processes.TryRemove(id, out var _);
                         }
-                        RestartProcess(client, id);
+                        else
+                        {
+                            RestartProcess(id);
+                        }
                     }
                 }, token: cts.Token) { Affinity = task.Affinity };
 
@@ -222,18 +208,19 @@
             }
             else
             {
-                task.Finally((_, __, ___) => {
-	                processes.TryRemove(id, out var _);
-                });
+                task.Finally((_, __, ___) => { processes.TryRemove(id, out var _); });
             }
         }
 
-        private void RestartProcess(IRequestContext client, string id)
+        private void RestartProcess(string id)
         {
             if (cts.IsCancellationRequested) return;
 
+            var client = GetClient(id);
             var process = GetProcess(id);
+
             ProcessRestartReason reason = ProcessRestartReason.UserInitiated;
+
             if (process.ProcessOptions.MonitorOptions == MonitorOptions.KeepAlive)
                 reason = ProcessRestartReason.KeepAlive;
 
@@ -241,7 +228,7 @@
             {
                 client.GetRemoteTarget<IServerNotifications>().ProcessRestarting(process, reason);
             }
-            catch(SocketException ex)
+            catch (SocketException ex)
             {
                 // client is gone, oh well
             }
@@ -262,75 +249,84 @@
 
         private void ReplayEvents(string id)
         {
-	        if (processes.TryGetValue(id, out var context))
-	        {
-		        var task = context.Task;
-		        if (task.Task.Status == TaskStatus.Running || task.Task.Status == TaskStatus.RanToCompletion ||
-			        task.Task.Status == TaskStatus.Faulted)
-		        {
-			        RaiseOnProcessStart(id, task.ProcessId);
+            if (processes.TryGetValue(id, out var context))
+            {
+                var task = context.Task;
+                if (task.Task.Status == TaskStatus.Running || task.Task.Status == TaskStatus.RanToCompletion ||
+                    task.Task.Status == TaskStatus.Faulted)
+                {
+                    RaiseOnProcessStart(id, task.ProcessId);
 
-			        var entries = context.OutputProcessor.Result?.ToArray();
-			        foreach (var entry in entries)
-			        {
-				        RaiseOnProcessOutput(id, entry);
-			        }
+                    var entries = context.OutputProcessor.Result?.ToArray();
+                    foreach (var entry in entries)
+                    {
+                        RaiseOnProcessOutput(id, entry);
+                    }
 
-			        if (task.Task.Status == TaskStatus.RanToCompletion || task.Task.Status == TaskStatus.Faulted)
-			        {
-				        RaiseOnProcessEnd(id, task.Successful, task.Exception, task.Errors);
-			        }
-		        }
-	        }
+                    if (task.Task.Status == TaskStatus.RanToCompletion || task.Task.Status == TaskStatus.Faulted)
+                    {
+                        RaiseOnProcessEnd(id, task.Successful, task.Exception, task.Errors);
+                    }
+                }
+            }
         }
 
         private void RemoveClient(string id)
         {
-	        if (processes.TryGetValue(id, out var data))
-	        {
-		        var scheduler = data.Notifications;
-		        scheduler.Dispose();
-		        ((IDisposable)scheduler.Context).Dispose();
-		        data.Client = null;
-		        data.Notifications = null;
-		        processes[id] = data;
-	        }
+            if (processes.TryGetValue(id, out var data))
+            {
+                var scheduler = data.Notifications;
+                scheduler.Dispose();
+                ((IDisposable)scheduler.Context).Dispose();
+                data.Client = null;
+                data.Notifications = null;
+                processes[id] = data;
+            }
         }
 
         private IProcessTask GetTask(string id)
         {
-	        if (processes.TryGetValue(id, out var data))
-	        {
-		        return data.Task;
-	        }
-	        throw new InvalidOperationException("Cannot find process with id " + id);
+            if (processes.TryGetValue(id, out var data))
+            {
+                return data.Task;
+            }
+            throw new InvalidOperationException("Cannot find process with id " + id);
         }
 
         public RpcProcess GetProcess(string id)
         {
-	        if (processes.TryGetValue(id, out var data))
-	        {
-		        return data.Process;
-	        }
-	        throw new InvalidOperationException("Cannot find process with id " + id);
+            if (processes.TryGetValue(id, out var data))
+            {
+                return data.Process;
+            }
+            throw new InvalidOperationException("Cannot find process with id " + id);
+        }
+
+        private IRequestContext GetClient(string id)
+        {
+            if (processes.TryGetValue(id, out var data))
+            {
+                return data.Client;
+            }
+            throw new InvalidOperationException("Cannot find process with id " + id);
         }
 
         private void UpdateProcessId(string id, int processId)
         {
-	        if (processes.TryGetValue(id, out var data))
-	        {
-		        var process = data.Process;
-		        process.ProcessId = processId;
+            if (processes.TryGetValue(id, out var data))
+            {
+                var process = data.Process;
+                process.ProcessId = processId;
                 data.Process = process;
                 processes[id] = data;
-	        }
+            }
         }
 
         private RpcProcess UpdateMonitorOptions(string id, MonitorOptions options)
         {
             if (processes.TryGetValue(id, out var data))
             {
-	            var process = data.Process;
+                var process = data.Process;
                 var opts = process.ProcessOptions;
                 opts.MonitorOptions = options;
                 process.ProcessOptions = opts;
@@ -343,87 +339,87 @@
 
         private void RaiseOnProcessStart(string id, int processId)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
-	        UpdateProcessId(id, processId);
+            UpdateProcessId(id, processId);
 
             if (processes.TryGetValue(id, out var context) && context.Client != null)
-	        {
-		        taskManager
+            {
+                taskManager
                     .WithAsync(async ctx => {
-				        var client = ctx.Client;
+                        var client = ctx.Client;
 
                         var data = new NotificationData(
-					        client.GetRemoteTarget<IProcessNotifications>(),
-					        RpcProcessEventArgs.Get(ctx.Process));
+                            client.GetRemoteTarget<IProcessNotifications>(),
+                            RpcProcessEventArgs.Get(ctx.Process));
 
-				        await data.notifications.ProcessOnStart(data.StartArgs);
-				        return 0;
-			        }, context, TaskAffinity.Custom)
-			        .Start(context.Notifications);
-	        }
+                        await data.notifications.ProcessOnStart(data.StartArgs);
+                        return 0;
+                    }, context, TaskAffinity.Custom)
+                    .Start(context.Notifications);
+            }
         }
-
 
         private void RaiseOnProcessOutput(string id, string line)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
-	        if (processes.TryGetValue(id, out var context) && context.Client != null)
-	        {
-		        taskManager
-			        .WithAsync(async ctx => {
-					    var data = new NotificationData(ctx.Client.GetRemoteTarget<IProcessNotifications>(),
-						    RpcProcessOutputEventArgs.Get(ctx.Process, line));
-					    await data.notifications.ProcessOnOutput(data.OutputArgs);
-					    return 0;
-				    }, context, TaskAffinity.Custom)
-			        .Start(context.Notifications);
-	        }
+            if (processes.TryGetValue(id, out var context) && context.Client != null)
+            {
+                taskManager
+                    .WithAsync(async ctx => {
+                        var data = new NotificationData(ctx.Client.GetRemoteTarget<IProcessNotifications>(),
+                            RpcProcessOutputEventArgs.Get(ctx.Process, line));
+                        await data.notifications.ProcessOnOutput(data.OutputArgs);
+                        return 0;
+                    }, context, TaskAffinity.Custom)
+                    .Start(context.Notifications);
+            }
         }
 
         private void RaiseOnProcessEnd(string id, bool success, Exception ex, string errors)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
-	        if (processes.TryGetValue(id, out var context) && context.Client != null)
-	        {
-		        if (!success && ex != null && ex is ProcessException pe && pe.InnerException is Win32Exception)
-		        {
-			        // don't keep alive this process, it's not starting up correctly
-			        UpdateMonitorOptions(id, MonitorOptions.None);
-		        }
+            if (processes.TryGetValue(id, out var context) && context.Client != null)
+            {
+                if (!success && ex != null && ex is ProcessException pe && pe.InnerException is Win32Exception)
+                {
+                    // don't keep alive this process, it's not starting up correctly
+                    UpdateMonitorOptions(id, MonitorOptions.None);
+                }
 
-		        taskManager
-			        .WithAsync(async ctx => {
-                        var data = new NotificationData(ctx.Client.GetRemoteTarget<IProcessNotifications>(),
-						        RpcProcessEndEventArgs.Get(ctx.Process, success, ex.GetExceptionMessage(),
-							        (ex as ProcessException)?.ErrorCode ?? 0, ex?.GetType().ToString() ?? string.Empty, errors));
+                taskManager
+                    .WithAsync(async ctx => {
+                            var data = new NotificationData(ctx.Client.GetRemoteTarget<IProcessNotifications>(),
+                                RpcProcessEndEventArgs.Get(ctx.Process, success, ex.GetExceptionMessage(),
+                                    (ex as ProcessException)?.ErrorCode ?? 0, ex?.GetType().ToString() ?? string.Empty,
+                                    errors));
 
-					        await data.notifications.ProcessOnEnd(data.EndArgs);
-					        return 0;
-				        },
-				        context, TaskAffinity.Custom)
-			        .Start(context.Notifications);
-	        }
+                            await data.notifications.ProcessOnEnd(data.EndArgs);
+                            return 0;
+                        },
+                        context, TaskAffinity.Custom)
+                    .Start(context.Notifications);
+            }
         }
 
         private void RaiseOnProcessError(string id, string error)
         {
-	        if (cts.IsCancellationRequested) return;
+            if (cts.IsCancellationRequested) return;
 
-	        if (processes.TryGetValue(id, out var context) && context.Client != null)
-	        {
+            if (processes.TryGetValue(id, out var context) && context.Client != null)
+            {
 
-		        taskManager
-			        .WithAsync(async ctx => {
+                taskManager
+                    .WithAsync(async ctx => {
                         var data = new NotificationData(ctx.Client.GetRemoteTarget<IProcessNotifications>(),
-					        RpcProcessErrorEventArgs.Get(ctx.Process, error));
-				        await data.notifications.ProcessOnError(data.ErrorArgs);
-				        return 0;
-			        }, context, TaskAffinity.Custom)
-			        .Start(context.Notifications);
-	        }
+                            RpcProcessErrorEventArgs.Get(ctx.Process, error));
+                        await data.notifications.ProcessOnError(data.ErrorArgs);
+                        return 0;
+                    }, context, TaskAffinity.Custom)
+                    .Start(context.Notifications);
+            }
         }
 
         private bool disposed;
@@ -433,15 +429,15 @@
             if (disposed) return;
             if (disposing)
             {
-	            if (!cts.IsCancellationRequested)
+                if (!cts.IsCancellationRequested)
                 {
                     cts.Cancel();
                 }
 
-	            disposed = true;
+                disposed = true;
 
                 SynchronizationContextTaskScheduler[] n;
-                lock (processes)
+                lock(processes)
                 {
                     n = processes.Values.Select(x => x.Notifications).ToArray();
                     processes.Clear();
@@ -463,43 +459,43 @@
 
         struct NotificationData
         {
-	        private object args;
-	        public IProcessNotifications notifications;
+            private object args;
+            public IProcessNotifications notifications;
 
-	        public RpcProcessEndEventArgs EndArgs => (RpcProcessEndEventArgs)args;
-	        public RpcProcessOutputEventArgs OutputArgs => (RpcProcessOutputEventArgs)args;
-	        public RpcProcessErrorEventArgs ErrorArgs => (RpcProcessErrorEventArgs)args;
-	        public RpcProcessEventArgs StartArgs => (RpcProcessEventArgs)args;
+            public RpcProcessEndEventArgs EndArgs => (RpcProcessEndEventArgs)args;
+            public RpcProcessOutputEventArgs OutputArgs => (RpcProcessOutputEventArgs)args;
+            public RpcProcessErrorEventArgs ErrorArgs => (RpcProcessErrorEventArgs)args;
+            public RpcProcessEventArgs StartArgs => (RpcProcessEventArgs)args;
 
-	        public NotificationData(IProcessNotifications notifications, RpcProcessEndEventArgs args)
-	        {
-		        this.notifications = notifications;
-		        this.args = args;
-	        }
-	        public NotificationData(IProcessNotifications notifications, RpcProcessOutputEventArgs args)
-	        {
-		        this.notifications = notifications;
-		        this.args = args;
-	        }
+            public NotificationData(IProcessNotifications notifications, RpcProcessEndEventArgs args)
+            {
+                this.notifications = notifications;
+                this.args = args;
+            }
 
-	        public NotificationData(IProcessNotifications notifications, RpcProcessErrorEventArgs args)
-	        {
-		        this.notifications = notifications;
-		        this.args = args;
-	        }
+            public NotificationData(IProcessNotifications notifications, RpcProcessOutputEventArgs args)
+            {
+                this.notifications = notifications;
+                this.args = args;
+            }
 
-	        public NotificationData(IProcessNotifications notifications, RpcProcessEventArgs args)
-	        {
-		        this.notifications = notifications;
-		        this.args = args;
-	        }
+            public NotificationData(IProcessNotifications notifications, RpcProcessErrorEventArgs args)
+            {
+                this.notifications = notifications;
+                this.args = args;
+            }
+
+            public NotificationData(IProcessNotifications notifications, RpcProcessEventArgs args)
+            {
+                this.notifications = notifications;
+                this.args = args;
+            }
         }
 
         public class Implementation : IProcessRunner
         {
             private readonly ProcessRunner owner;
             private readonly IRequestContext client;
-
             public Implementation(ProcessRunner owner, IRequestContext client)
             {
                 this.owner = owner;
@@ -530,18 +526,44 @@
                 owner.RunProcess(process.Id);
                 return Task.CompletedTask;
             }
-
             public Task Stop(RpcProcess process)
             {
                 owner.StopProcess(process.Id);
                 return Task.CompletedTask;
             }
-
             public Task Detach(RpcProcess process)
             {
-	            owner.Detach(process.Id);
-	            return Task.CompletedTask;
+                owner.Detach(process.Id);
+                return Task.CompletedTask;
             }
+
+            public Task Run(string id)
+            {
+                owner.RunProcess(id);
+                return Task.CompletedTask;
+            }
+
+            public Task Stop(string id)
+            {
+                owner.StopProcess(id);
+                return Task.CompletedTask;
+            }
+
+            public Task Detach(string id)
+            {
+                owner.Detach(id);
+                return Task.CompletedTask;
+            }
+        }
+
+        private struct ContextData
+        {
+            public RpcProcess Process;
+            public IProcessTask<string, List<string>> Task;
+            public IRequestContext Client;
+            public RaiseUntilDetachOutputProcess OutputProcessor;
+            public SynchronizationContextTaskScheduler Notifications;
+            public bool ManuallyStopped;
         }
     }
 }

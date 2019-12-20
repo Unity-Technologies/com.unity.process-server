@@ -13,6 +13,7 @@
     public class RpcServerTask : TaskBase<RpcClient>
     {
         private readonly IProcessManager processManager;
+        private readonly IRpcProcessConfiguration configuration;
         private readonly string workingDir;
         private readonly ProcessOptions options;
         private readonly IEnvironment environment;
@@ -25,42 +26,43 @@
         private readonly int expectedPort;
 
         public RpcServerTask(ITaskManager taskManager,
-	        IProcessManager processManager,
-	        IProcessServerConfiguration configuration,
-	        string workingDir = default,
-	        ProcessOptions options = default,
-	        PortOutputProcessor processor = null,
-	        List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
-	        CancellationToken token = default)
-	        : this(taskManager, processManager, processManager.DefaultProcessEnvironment,
-		        processManager.DefaultProcessEnvironment.Environment,
-		        configuration, workingDir, options, processor, remoteRpcTargets, localRpcTargets, token)
+            IProcessManager processManager,
+            IRpcProcessConfiguration configuration,
+            string workingDir = default,
+            ProcessOptions options = default,
+            PortOutputProcessor processor = null,
+            List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
+            CancellationToken token = default)
+            : this(taskManager, processManager, processManager.DefaultProcessEnvironment,
+                processManager.DefaultProcessEnvironment.Environment,
+                configuration, workingDir, options, processor, remoteRpcTargets, localRpcTargets, token)
         {}
 
         public RpcServerTask(ITaskManager taskManager,
-	        IProcessManager processManager,
-	        IProcessEnvironment processEnvironment,
-	        IEnvironment environment,
-	        IProcessServerConfiguration configuration,
-	        string workingDir = default,
-	        ProcessOptions options = default,
-	        PortOutputProcessor processor = null,
-	        List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
-	        CancellationToken token = default)
-	        : base(taskManager, token)
+            IProcessManager processManager,
+            IProcessEnvironment processEnvironment,
+            IEnvironment environment,
+            IRpcProcessConfiguration configuration,
+            string workingDir = default,
+            ProcessOptions options = default,
+            PortOutputProcessor processor = null,
+            List<Type> remoteRpcTargets = null, List<object> localRpcTargets = null,
+            CancellationToken token = default)
+            : base(taskManager, token)
         {
-	        this.expectedPort = configuration.Port;
-	        this.processManager = processManager;
-	        this.workingDir = workingDir;
-	        this.options = options;
-	        this.processEnvironment = processManager.DefaultProcessEnvironment;
-	        this.environment = processEnvironment.Environment;
-	        this.remoteRpcTargets = remoteRpcTargets ?? new List<Type>();
-	        this.localRpcTargets = localRpcTargets ?? new List<object>();
-	        executable = configuration.ExecutablePath;
-	        arguments = CreateArguments(environment);
+            this.expectedPort = configuration.Port;
+            this.processManager = processManager;
+            this.configuration = configuration;
+            this.workingDir = workingDir;
+            this.options = options;
+            this.processEnvironment = processManager.DefaultProcessEnvironment;
+            this.environment = processEnvironment.Environment;
+            this.remoteRpcTargets = remoteRpcTargets ?? new List<Type>();
+            this.localRpcTargets = localRpcTargets ?? new List<object>();
+            executable = configuration.ExecutablePath;
+            arguments = CreateArguments(environment);
 
-	        portProcessor = processor ?? new PortOutputProcessor();
+            portProcessor = processor ?? new PortOutputProcessor();
         }
 
         public RpcServerTask RegisterRemoteTarget<T>()
@@ -148,16 +150,25 @@
         private IProcessTask<int> SetupServerProcess()
         {
             var task = new DotNetProcessTask<int>(TaskManager, processEnvironment, environment,
-	            executable, arguments, portProcessor) { Affinity = TaskAffinity.None };
+                executable, arguments, portProcessor) { Affinity = TaskAffinity.None };
 
-			if (processManager is IRemoteProcessManager remoteProcessManager)
-				task.Configure(remoteProcessManager, options, workingDir);
-			else
-				task.Configure(processManager, workingDir);
+            if (processManager is IRemoteProcessManager remoteProcessManager)
+            {
+                task.Configure(remoteProcessManager, options, workingDir);
+                ((RemoteProcessWrapper)task.Wrapper).OnProcessPrepared += RpcServerTask_OnProcessPrepared;
+            }
+            else
+                task.Configure(processManager, workingDir);
 
-			// server returned the port, detach the process
+            // server returned the port, detach the process
             task.OnOutput += _ => task.Detach();
             return task;
+        }
+
+        private void RpcServerTask_OnProcessPrepared(RemoteProcessWrapper wrapper, RpcProcess process)
+        {
+            configuration.RemoteProcessId = process.Id;
+            wrapper.OnProcessPrepared -= RpcServerTask_OnProcessPrepared;
         }
 
         private async Task<RpcClient> ConnectToServer(int port)

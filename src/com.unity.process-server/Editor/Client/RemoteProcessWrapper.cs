@@ -102,6 +102,8 @@
         {
             if (!detached)
             {
+                var runner = GetRunner();
+                runner.Detach(remoteProcess);
                 detached = true;
                 Dispose();
             }
@@ -109,25 +111,25 @@
 
         public void OnProcessStart(RpcProcessEventArgs args)
         {
-	        ProcessId = args.Process.ProcessId;
+            ProcessId = args.Process.ProcessId;
             RaiseOnStart();
         }
 
         public void OnProcessError(RpcProcessErrorEventArgs e)
         {
-	        if (disposed) return;
+            if (disposed) return;
             errors.Add(e.Errors);
         }
 
         public void OnProcessOutput(RpcProcessOutputEventArgs e)
         {
-	        if (disposed) return;
+            if (disposed) return;
             outputProcessor.Process(e.Data);
         }
 
         public void OnProcessEnd(RpcProcessEndEventArgs e)
         {
-	        if (disposed) return;
+            if (disposed) return;
 
             if (!e.Successful)
                 thrownException = !string.IsNullOrEmpty(e.Exception) ? new ProcessException(e.Exception) : null;
@@ -153,6 +155,7 @@
         }
 
         private bool disposed;
+
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
@@ -170,6 +173,5 @@
         }
 
         public ProcessOptions ProcessOptions { get; private set; }
-
     }
 }

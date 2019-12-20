@@ -104,7 +104,7 @@ namespace BaseTests
                 Assert.True(wait.Result != timeout, "Detach did not happen on time");
 
                 timeout = Task.Delay(1000);
-                wait = Task.WhenAny(task.Task, timeout);
+                wait = Task.WhenAny(restarted.Task, timeout);
                 foreach (var frame in WaitForCompletion(wait)) yield return frame;
                 Assert.True(wait.Result != timeout, "Restart did not happen on time");
             }
@@ -231,11 +231,53 @@ namespace BaseTests
 	        }
         }
 
+
+        [CustomUnityTest]
+        public IEnumerator CanStopKeepAliveProcessManually()
+        {
+	        using (var test = StartTest())
+	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
+		        new ServerConfiguration(ServerDirectory)))
+	        {
+		        var task = processServer.NewDotNetProcess(TestApp, "-s 200",
+			        new ProcessOptions(MonitorOptions.KeepAlive),
+			        onStart: t => t.Detach()
+		        );
+
+				var prepared = new TaskCompletionSource<string>();
+
+				((RemoteProcessWrapper)task.Wrapper).OnProcessPrepared += (wrapper, process) => {
+					prepared.TrySetResult(process.Id);
+				};
+
+				task.Start();
+
+		        var timeout = Task.Delay(4000);
+		        var wait = Task.WhenAny(task.Task, timeout);
+		        foreach (var frame in WaitForCompletion(wait)) yield return frame;
+		        Assert.True(wait.Result != timeout, "Detach did not happen on time");
+
+
+		        timeout = Task.Delay(1000);
+		        wait = Task.WhenAny(prepared.Task, timeout);
+		        foreach (var frame in WaitForCompletion(wait)) yield return frame;
+		        Assert.True(wait.Result != timeout, "Restart did not happen on time");
+
+		        var stopTask = processServer.ProcessRunner.Stop(prepared.Task.Result);
+		        timeout = Task.Delay(1000);
+		        wait = Task.WhenAny(stopTask, timeout);
+		        foreach (var frame in WaitForCompletion(wait)) yield return frame;
+		        Assert.True(wait.Result != timeout, "Stop did not happen on time");
+	        }
+        }
+
+
+
         class TestProcessServer : Unity.ProcessServer.ProcessServer, IDisposable
         {
             public TestProcessServer(ITaskManager taskManager,
                 IEnvironment environment,
-                IProcessServerConfiguration configuration)
+                IRpcProcessConfiguration configuration)
                 : base(taskManager, environment, configuration)
             {
             }

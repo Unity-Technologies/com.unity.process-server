@@ -9,84 +9,6 @@
     using Rpc;
     using Unity.Editor.Tasks.Extensions;
 
-    /// <summary>
-    /// Client interface of the process server.
-    /// </summary>
-    public interface IProcessServer
-    {
-        IProcessServer ConnectSync();
-        Task<IProcessServer> Connect();
-        void ShutdownSync();
-        Task Shutdown();
-
-        /// <summary>
-        /// Runs a native process on the process server, returning all the output when the process is done.
-        /// All callbacks run in the UI thread.
-        /// </summary>
-        IProcessTask<string> NewNativeProcess(string executable,
-	        string arguments,
-	        ProcessOptions options = default,
-	        string workingDir = default,
-	        Action<IProcessTask<string>> onStart = null,
-	        Action<IProcessTask<string>, string> onOutput = null,
-	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-	        IOutputProcessor<string> outputProcessor = null,
-	        TaskAffinity affinity = TaskAffinity.None,
-	        CancellationToken token = default);
-
-        /// <summary>
-        /// Runs a .net process on the process server. The process will be run natively on .net if on Windows
-        /// or Unity's mono if not on Windows, returning all the output when the process is done.
-        /// All callbacks run in the UI thread.
-        /// </summary>
-        IProcessTask<string> NewDotNetProcess(string executable,
-	        string arguments,
-	        ProcessOptions options = default,
-	        string workingDir = default,
-	        Action<IProcessTask<string>> onStart = null,
-	        Action<IProcessTask<string>, string> onOutput = null,
-	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-	        IOutputProcessor<string> outputProcessor = null,
-	        TaskAffinity affinity = TaskAffinity.None,
-	        CancellationToken token = default);
-
-        /// <summary>
-        /// Runs a process on the process server, using Unity's Mono, returning all the output when the process is done.
-        /// All callbacks run in the UI thread.
-        /// </summary>
-        IProcessTask<string> NewMonoProcess(string executable,
-	        string arguments,
-	        ProcessOptions options = default,
-	        string workingDir = default,
-	        Action<IProcessTask<string>> onStart = null,
-	        Action<IProcessTask<string>, string> onOutput = null,
-	        Action<IProcessTask<string>, string, bool, Exception> onEnd = null,
-	        IOutputProcessor<string> outputProcessor = null,
-	        TaskAffinity affinity = TaskAffinity.None,
-	        CancellationToken token = default);
-
-        IServer Server { get; }
-        IProcessRunner ProcessRunner { get; }
-
-        ITaskManager TaskManager { get; }
-        IRemoteProcessManager ProcessManager { get; }
-        IEnvironment Environment { get; }
-        IProcessServerConfiguration Configuration { get; }
-    }
-
-    public interface IProcessServerConfiguration
-    {
-        /// <summary>
-        /// Pass this to <see cref="ProcessServer.Get(ITaskManager, IEnvironment, IProcessServerConfiguration)"/>
-        /// so the client can read and write the port information when connecting.
-        /// </summary>
-        int Port { get; set; }
-        /// <summary>
-        /// The path to the process server executable.
-        /// </summary>
-        string ExecutablePath { get; }
-    }
-
     public class ProcessServer : IProcessServer
     {
         private static ProcessServer instance;
@@ -108,7 +30,7 @@
 
         public ProcessServer(ITaskManager taskManager,
             IEnvironment environment,
-            IProcessServerConfiguration configuration)
+            IRpcProcessConfiguration configuration)
         {
             Environment = environment;
             completionTask = completionHandle.ToTask();
@@ -158,7 +80,7 @@
 
         public static IProcessServer Get(ITaskManager taskManager = null,
             IEnvironment environment = null,
-            IProcessServerConfiguration configuration = null)
+            IRpcProcessConfiguration configuration = null)
         {
             if (instance?.disposed ?? false)
                 instance = null;
@@ -403,7 +325,7 @@
         public ITaskManager TaskManager { get; }
         public IEnvironment Environment { get; }
         public IRemoteProcessManager ProcessManager => processManager;
-        public IProcessServerConfiguration Configuration { get; }
+        public IRpcProcessConfiguration Configuration { get; }
 
         public IServer Server => ipcClient?.GetRemoteTarget<IServer>();
         public IProcessRunner ProcessRunner => ipcClient?.GetRemoteTarget<IProcessRunner>();
@@ -437,13 +359,13 @@
         /// Class that makes sure we always write the port information in the main thread, because it might be
         /// a scriptable singleton
         /// </summary>
-        class ApplicationConfigurationWrapper : IProcessServerConfiguration
+        class ApplicationConfigurationWrapper : IRpcProcessConfiguration
         {
             private readonly ITaskManager taskManager;
-            private readonly IProcessServerConfiguration other;
+            private readonly IRpcProcessConfiguration other;
             private int? port;
 
-            public ApplicationConfigurationWrapper(ITaskManager taskManager, IProcessServerConfiguration other)
+            public ApplicationConfigurationWrapper(ITaskManager taskManager, IRpcProcessConfiguration other)
             {
                 this.taskManager = taskManager;
                 this.other = other;
@@ -451,10 +373,7 @@
 
             public int Port
             {
-                get
-                {
-                    return port.HasValue ? port.Value : other.Port;
-                }
+	            get => port.HasValue ? port.Value : other.Port; 
                 set
                 {
                     if (taskManager.InUIThread)
@@ -473,6 +392,8 @@
             }
 
             public string ExecutablePath => other.ExecutablePath;
+
+            string IRpcProcessConfiguration.RemoteProcessId { get => string.Empty; set {} }
         }
     }
 

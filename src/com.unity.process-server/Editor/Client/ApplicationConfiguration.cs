@@ -9,8 +9,6 @@ using Unity.ProcessServer.EditorStubs;
 
 namespace Unity.ProcessServer
 {
-    using Internal.IO;
-
     sealed class ApplicationCache : ScriptableSingleton<ApplicationCache>
     {
         [SerializeField] private bool firstRun = true;
@@ -78,10 +76,11 @@ namespace Unity.ProcessServer
         }
     }
 
-    class ApplicationConfiguration : ScriptableSingleton<ApplicationConfiguration>, IProcessServerConfiguration
+    class ApplicationConfiguration : ScriptableSingleton<ApplicationConfiguration>, IRpcProcessConfiguration
     {
         [SerializeField] private int port;
         [SerializeField] private string executablePath;
+        [SerializeField] private string remoteProcessId;
 
         private const string ProcessExecutable = "Packages/com.unity.process-server/Server~/Unity.ProcessServer.exe";
 
@@ -113,6 +112,19 @@ namespace Unity.ProcessServer
                 if (executablePath != value)
                 {
                     executablePath = value;
+                    Save(true);
+                }
+            }
+        }
+
+        public string RemoteProcessId
+        {
+            get => remoteProcessId;
+            set
+            {
+                if (remoteProcessId != value)
+                {
+                    remoteProcessId = value;
                     Save(true);
                 }
             }

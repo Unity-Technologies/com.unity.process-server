@@ -2,10 +2,10 @@ root=true
 
 [*.{cs,ts,tsx,ps1,ps}]
 indent_style=space
-indent_size=tab
+tab_width=4
+indent_size=4
 insert_final_newline=true
 trim_trailing_whitespace=true
-
 
 [*.{config,csproj,json,nuspec,props,resxtargets,targets,sh,cmd,md}]
 indent_style=space

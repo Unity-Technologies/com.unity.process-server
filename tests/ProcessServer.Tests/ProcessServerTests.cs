@@ -49,6 +49,12 @@ namespace BaseTests
         }
 
         [Test]
+        public async Task CanStopKeepAliveProcessManually_()
+        {
+	        await RunTest(CanStopKeepAliveProcessManually);
+        }
+
+        [Test]
         public async Task Server_CanRestartProcess()
         {
             using (var test = StartTest())

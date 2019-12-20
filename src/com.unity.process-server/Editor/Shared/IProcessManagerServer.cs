@@ -21,6 +21,9 @@ namespace Unity.ProcessServer.Interfaces
         Task Run(RpcProcess process);
         Task Stop(RpcProcess process);
         Task Detach(RpcProcess process);
+        Task Run(string processId);
+        Task Stop(string processId);
+        Task Detach(string processId);
     }
 
     public enum MonitorOptions

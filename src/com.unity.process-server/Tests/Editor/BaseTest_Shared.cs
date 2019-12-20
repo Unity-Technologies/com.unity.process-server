@@ -23,7 +23,7 @@ namespace BaseTests
         void Trace(string message, params object[] objects);
     }
 
-    class ServerConfiguration : Unity.Rpc.Configuration, IProcessServerConfiguration
+    class ServerConfiguration : Unity.Rpc.Configuration, IRpcProcessConfiguration
     {
         public const string ProcessExecutableName = "Unity.ProcessServer.exe";
 
@@ -33,6 +33,7 @@ namespace BaseTests
         }
 
         public string ExecutablePath { get; set; }
+		public string RemoteProcessId { get; set; }
     }
 
     internal class TestData : IDisposable
@@ -81,8 +82,7 @@ namespace BaseTests
 
 #if UNITY_EDITOR
 			Environment.Initialize(projectPath, TheEnvironment.instance.Environment.UnityVersion, TheEnvironment.instance.Environment.UnityApplication, TheEnvironment.instance.Environment.UnityApplicationContents);
-			return;
-#endif
+#else
 
             SPath unityPath, unityContentsPath;
             unityPath = CurrentExecutionDirectory;
@@ -101,6 +101,7 @@ namespace BaseTests
             }
 
             Environment.Initialize(projectPath, "2019.2", unityPath, unityContentsPath);
+#endif
         }
 
         public void Dispose()
