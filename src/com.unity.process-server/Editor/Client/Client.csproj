@@ -21,8 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
-    <PackageReference Include="com.unity.rpc" Version="1.0.20-preview" />
-    <PackageReference Include="com.unity.editor.tasks" Version="1.2.20" />
+    <PackageReference Include="com.unity.rpc" Version="1.0.21-preview" />
+    <PackageReference Include="com.unity.editor.tasks" Version="1.2.22" />
   </ItemGroup>
 
   <!-- package the sources and version stamp everything only when doing a full build -->
