@@ -2,38 +2,34 @@
 
 The Unity process server lets you run arbitrary external processes that can survive domain reloads, streaming process output back to you via IPC with the help of the Unity.Ipc library. It can optionally monitor processes that it runs and restart them if they stop.
 
-# How to build
+## How to build
 
-## Build and Package a release build with a release version
+Check [How to Build](https://raw.githubusercontent.com/Unity-Technologies/Git-for-Unity/master/BUILD.md) for all the build, packaging and versioning details.
 
-`pack[.sh|cmd] -r -b -p -u`
+### Release build 
 
-## Build
+`build[.sh|cmd] -r`
 
-`dotnet build -c [Debug|Release]` or `build[.sh|cmd] -[r|d]`
+### Release build and package
 
-## Build and test a debug build
+`pack[.sh|cmd] -r -b`
 
-`dotnet test -c Debug` or `test[.sh|cmd] -b -d`
+### Release build and test
 
-## Build and test a release build
+`test[.sh|cmd] -r -b`
 
-`dotnet test` or `test[.sh|cmd] -b`
 
-## Test an existing build
+### Where are the build artifacts?
 
-`dotnet test --no-build -c [Debug|Release]` or `test[.sh|cmd] -[r|d]`
+Packages sources are in `build/packages`.
 
-## Package an existing build (nuget)
+Nuget packages are in `build/nuget`.
 
-`dotnet pack --no-restore --no-build -c [Debug|Release]` or `pack[.sh|cmd] -[r|d]`
+Packman (npm) packages are in `upm-ci~/packages`.
 
-## Where are the built artifacts?
+Binaries for each project are in `build/bin` for the main projects and `build/tests` for the tests.
 
-Nuget packages are in `build/nuget`. Npm packages are in `upc-ci~/packages`.
-Binaries for each project are in `build/bin` for the main projects, `build/Samples/bin` for the samples, and `build/bin/tests` for the tests.
-
-## How to bump the major or minor parts of the version
+### How to bump the major or minor parts of the version
 
 The `version.json` file in the root of the repo controls the version for all packages.
 Set the major and/or minor number in it and **commit the change** so that the next build uses the new version.
