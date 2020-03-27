@@ -2,7 +2,7 @@
 
 ## [VERSION] - DATE
 
-- Bump com.unity.editor.tasks to 1.2.22 and com.unity.rpc to 1.0.21-preview
+- Bump com.unity.editor.tasks to 2.1.0 and com.unity.rpc to 1.0.22-preview
 - Don't try to stop the server if there's no server
 - Add a way of stopping remote processes manually
 - Add an optional output processor argument to RpcServerTask
