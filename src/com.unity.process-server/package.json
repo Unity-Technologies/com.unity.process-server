@@ -3,6 +3,7 @@
   "displayName": "Process Server",
   "description": "This library lets you run external processes that can survive Unity domain reloads.",
   "version": "0.0.0-placeholder",
+  "unity": "2018.4",
   "license": "MIT",
   "author": {
     "name": "Unity Technologies"
