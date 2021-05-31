@@ -44,7 +44,7 @@
   <Import Project="copybinaries.targets" />
 
   <ItemGroup Condition="'$(FullBuild)' == 'true'">
-    <PackageReference Include="Nerdbank.GitVersioning" Version="3.1.38-beta-g5d1f8441c5" PrivateAssets="all" Private="false" />
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.4.194" PrivateAssets="all" Private="false" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19367-01" PrivateAssets="All" Private="false" />
   </ItemGroup>
 
