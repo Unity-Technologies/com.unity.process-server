@@ -53,7 +53,7 @@
             if (runner == null)
             {
                 server = server.ConnectSync();
-                runner = server.ProcessRunner;
+                runner = server?.ProcessRunner;
             }
             return runner;
         }
@@ -92,9 +92,21 @@
         public override void Stop(bool dontWait = false)
         {
             var runner = GetRunner();
-            var task = runner.Stop(remoteProcess);
-            if (!dontWait)
-                task.Wait(cts.Token);
+            if (runner != null)
+            {
+                var task = runner.Stop(remoteProcess);
+                if (!dontWait)
+                {
+                    try
+                    {
+                        task.Wait(cts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Do nothing.
+                    }
+                }
+            }
             Dispose();
         }
 
