@@ -3,7 +3,7 @@
   "displayName": "Process Server",
   "description": "This library lets you run external processes that can survive Unity domain reloads.",
   "version": "0.0.0-placeholder",
-  "unity": "2018.4",
+  "unity": "2019.2",
   "license": "MIT",
   "author": {
     "name": "Unity Technologies"
@@ -15,8 +15,8 @@
     "revision": ""
   },
   "dependencies": {
-    "com.unity.rpc": "1.0.22-preview",
-    "com.unity.editor.tasks": "2.1.0"
+    "com.unity.rpc": "1.0.37-exp.1",
+    "com.unity.editor.tasks": "2.1.3-exp.6"
   },
   "testPackages": {
     "com.unity.process-server.tests": "0.0.0-placeholder"

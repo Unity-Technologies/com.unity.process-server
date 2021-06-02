@@ -228,7 +228,7 @@
             {
                 client.GetRemoteTarget<IServerNotifications>().ProcessRestarting(process, reason);
             }
-            catch (SocketException ex)
+            catch (SocketException)
             {
                 // client is gone, oh well
             }
