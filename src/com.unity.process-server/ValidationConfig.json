@@ -1,0 +1,9 @@
+{
+	"SDKFilesValidation":
+	{
+		"manifestIgnore":
+		[
+			"*/YamlDotNet.dll"
+		]
+	}
+}
