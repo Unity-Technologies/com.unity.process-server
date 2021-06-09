@@ -24,7 +24,7 @@ When the process server receives a request to run a KeepAlive process with a cer
 ### High level API
 
 
-To run processes, you'll need to obtain a `IProcessServer` instance first. 
+To run processes, you'll need to obtain a `IProcessServer` instance first.
 
 ```
 using Unity.ProcessServer;
@@ -50,7 +50,7 @@ var process = processServer.NewDotNetProcess(
 process.Start(); // start the process. This is non-blocking, it will schedule the task in the scheduler set above.
 ```
 
-If you want to run your process in the background once it's up and running, call `Detach` on the `IProcessTask` object once it's started or at some later point. `Detach` causes `IProcessTask` objects to complete as if the process had ended (though it hasn't), and tells the Process Server to stop processing the raw output directly (since there's no one to receive the output anymore). This saves memory on the server side, and allows process event replays (when reconnecting to running processes) to only replay the relevant events.  
+If you want to run your process in the background once it's up and running, call `Detach` on the `IProcessTask` object once it's started or at some later point. `Detach` causes `IProcessTask` objects to complete as if the process had ended (though it hasn't), and tells the Process Server to stop processing the raw output directly (since there's no one to receive the output anymore). This saves memory on the server side, and allows process event replays (when reconnecting to running processes) to only replay the relevant events.
 
 ```
 processServer.NewDotNetProcess("myprocess.exe", onStart: task => task.Detach()).Start();
@@ -86,7 +86,7 @@ var processTask = new NativeProcessTask<int>(processServer.TaskManager, processS
         new FirstResultOutputProcessor<int>((string input, out int output, bool foundIt) => foundIt = int.TryParse(input, out output)));
 
 // this gets called when the output process returns a value. since we know that it will only return one value, we can detach the process and let it finish by itself. We could also `Stop()` the process to stop it completely.
-processTask.OnOutput += _ => processTask.Detach(); 
+processTask.OnOutput += _ => processTask.Detach();
 
 processTask..ThenInUI(result => {
      // do something with the result on the UI thread
@@ -183,7 +183,7 @@ processServer.TaskManager
 
 Check [How to Build](https://raw.githubusercontent.com/Unity-Technologies/Git-for-Unity/master/BUILD.md) for all the build, packaging and versioning details.
 
-### Release build 
+### Release build
 
 `build[.sh|cmd] -r`
 
