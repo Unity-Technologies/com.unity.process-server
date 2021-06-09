@@ -1,6 +1,6 @@
 # About the Unity Process Server
 
-The Unity process server lets you run arbitrary external processes that can survive domain reloads, streaming process output back to you via IPC with the help of the Unity.Ipc library. It can optionally monitor processes that it runs and restart them if they stop.
+Process Server package lets you run external processes that can survive Unity domain reload. It can optionally monitor processes that it runs and restart them if they stop.
 
 This package was created to allow version control packages to perform long-running operations without losing state due to Unity's C# domain being reloaded whenever game code is compiled. Having an RPC server per Unity instance that can run processes on behalf of editor extensions means that when the Unity editor reloads the managed domain, the RPC server is unaffected and the client can reconnect to it and continue operations, and the process server can ensure that processes are kept alive, if they need to be, while the domain is reloading.
 

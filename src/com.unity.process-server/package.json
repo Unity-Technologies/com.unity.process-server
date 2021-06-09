@@ -1,7 +1,7 @@
 {
   "name": "com.unity.process-server",
   "displayName": "Process Server",
-  "description": "This library lets you run external processes that can survive Unity domain reloads.",
+  "description": "Process Server package lets you run external processes that can survive Unity domain reload.",
   "version": "0.0.0-placeholder",
   "unity": "2019.2",
   "license": "MIT",
