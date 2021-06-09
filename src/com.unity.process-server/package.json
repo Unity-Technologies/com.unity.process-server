@@ -5,13 +5,9 @@
   "version": "0.0.0-placeholder",
   "unity": "2019.2",
   "license": "MIT",
-  "author": {
-    "name": "Unity Technologies"
-  },
   "repository": {
     "type": "git",
     "url": "git@github.com/Unity-Technologies/com.unity.process-server.git",
-    "directory": "",
     "revision": ""
   },
   "dependencies": {
