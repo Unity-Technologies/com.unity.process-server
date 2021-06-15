@@ -179,6 +179,10 @@ processServer.TaskManager
     .Start();
 ```
 
+## Security
+
+There are no built-in authentication or authorization mechanisms. User must provide one if needed.
+
 ## How to build
 
 Check [How to Build](https://raw.githubusercontent.com/Unity-Technologies/Git-for-Unity/master/BUILD.md) for all the build, packaging and versioning details.
