@@ -23,7 +23,7 @@ namespace BaseTests
         void Trace(string message, params object[] objects);
     }
 
-    class ServerConfiguration : Unity.ProcessServer.Server.ServerConfiguration, IRpcProcessConfiguration
+    class ServerConfiguration : Unity.Rpc.Configuration, IRpcProcessConfiguration
     {
         public const string ProcessExecutableName = "Unity.ProcessServer.exe";
 
@@ -32,6 +32,7 @@ namespace BaseTests
             ExecutablePath = processServerDirectory.ToSPath().Combine(ProcessExecutableName);
         }
 
+        public string AccessToken { get; set; }
         public string ExecutablePath { get; set; }
 		public string RemoteProcessId { get; set; }
     }

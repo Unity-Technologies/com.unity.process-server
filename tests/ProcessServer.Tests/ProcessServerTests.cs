@@ -60,7 +60,7 @@ namespace BaseTests
             using (var test = StartTest())
             {
                 using (var runner = new ProcessRunner(test.TaskManager, test.ProcessManager,
-                    test.ProcessManager.DefaultProcessEnvironment, test.Configuration, Substitute.For<ILogger<ProcessRunner>>()))
+                    test.ProcessManager.DefaultProcessEnvironment, new Unity.ProcessServer.Server.ServerConfiguration(), Substitute.For<ILogger<ProcessRunner>>()))
                 {
 
                     var notifications = Substitute.For<IServerNotifications>();
