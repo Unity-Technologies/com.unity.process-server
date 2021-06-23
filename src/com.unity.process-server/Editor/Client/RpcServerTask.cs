@@ -60,7 +60,7 @@
             this.remoteRpcTargets = remoteRpcTargets ?? new List<Type>();
             this.localRpcTargets = localRpcTargets ?? new List<object>();
             executable = configuration.ExecutablePath;
-            arguments = CreateArguments(environment);
+            arguments = CreateArguments(environment, configuration);
 
             portProcessor = processor ?? new PortOutputProcessor();
         }
@@ -77,13 +77,15 @@
             return this;
         }
 
-        private static string CreateArguments(IEnvironment environment)
+        private static string CreateArguments(IEnvironment environment, IRpcProcessConfiguration configuration)
         {
             var args = new List<string>();
             args.Add("-projectPath");
             args.Add(environment.UnityProjectPath.ToSPath().InQuotes());
             args.Add("-pid");
             args.Add(System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            args.Add("-accessToken");
+            args.Add(configuration.AccessToken);
             return string.Join(" ", args);
         }
 

@@ -23,7 +23,7 @@ namespace BaseTests
         void Trace(string message, params object[] objects);
     }
 
-    class ServerConfiguration : Unity.Rpc.Configuration, IRpcProcessConfiguration
+    class ServerConfiguration : Unity.ProcessServer.Server.ServerConfiguration, IRpcProcessConfiguration
     {
         public const string ProcessExecutableName = "Unity.ProcessServer.exe";
 
@@ -45,10 +45,11 @@ namespace BaseTests
         public readonly ITaskManager TaskManager;
         public readonly IEnvironment Environment;
         public readonly IProcessManager ProcessManager;
+        public readonly ServerConfiguration Configuration;
 
         private MainThreadSynchronizationContext ourContext;
 
-        public TestData(string testName, ILogging logger)
+        public TestData(string testName, ILogging logger, string serverDirectory)
         {
             TestName = testName;
             Logger = logger;
@@ -71,6 +72,7 @@ namespace BaseTests
             Environment = new UnityEnvironment(testName);
             InitializeEnvironment();
             ProcessManager = new ProcessManager(Environment);
+            Configuration = new ServerConfiguration(serverDirectory);
 
             Logger.Trace($"START {testName}");
             Watch.Start();
@@ -122,7 +124,7 @@ namespace BaseTests
 		protected const int Timeout = 30000;
 		protected const int RandomSeed = 120938;
 
-        internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new NUnitLogger(testName));
+        internal TestData StartTest([CallerMemberName] string testName = "test") => new TestData(testName, new NUnitLogger(testName), ServerDirectory);
 
         internal void StartTrackTime(Stopwatch watch, ILogging logger, string message = "")
 		{

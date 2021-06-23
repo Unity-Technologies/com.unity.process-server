@@ -20,6 +20,7 @@ namespace ClientTestApp
             ExecutablePath = processServerDirectory.Combine(ProcessExecutableName);
         }
 
+        public string AccessToken { get; set; }
         public string ExecutablePath { get; set; }
 		public string RemoteProcessId { get; set; }
     }

@@ -10,20 +10,20 @@ namespace Unity.ProcessServer.Interfaces
 
     public interface IServer
     {
-        Task Stop();
+        Task Stop(string accessToken);
     }
 
     public interface IProcessRunner
     {
-        Task<RpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options);
-        Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options);
-        Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options);
-        Task Run(RpcProcess process);
-        Task Stop(RpcProcess process);
-        Task Detach(RpcProcess process);
-        Task Run(string processId);
-        Task Stop(string processId);
-        Task Detach(string processId);
+        Task<RpcProcess> Prepare(string executable, string args, string workingDirectory, ProcessOptions options, string accessToken);
+        Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options, string accessToken);
+        Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options, string accessToken);
+        Task Run(RpcProcess process, string accessToken);
+        Task Stop(RpcProcess process, string accessToken);
+        Task Detach(RpcProcess process, string accessToken);
+        Task Run(string processId, string accessToken);
+        Task Stop(string processId, string accessToken);
+        Task Detach(string processId, string accessToken);
     }
 
     public enum MonitorOptions

@@ -1,6 +1,7 @@
 ﻿namespace Unity.ProcessServer
 {
     using System;
+    using System.Security.Cryptography;
     using System.Threading;
     using System.Threading.Tasks;
     using Editor.Tasks;
@@ -63,8 +64,10 @@
 	            configuration = new ApplicationConfigurationWrapper(TaskManager, ApplicationConfiguration.instance);
 	            // read the executable path up front so it gets serialized if it needs to, while we're on the main thread
 	            var _ = configuration.ExecutablePath;
-
             }
+
+            if (string.IsNullOrEmpty(configuration.AccessToken))
+                configuration.AccessToken = GenerateAccessToken();
 
             Configuration = configuration;
 
@@ -72,10 +75,17 @@
             processManager = new RemoteProcessManager(this, localProcessManager.DefaultProcessEnvironment, cts.Token);
             notifications = new ServerNotifications(this);
 
-
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.quitting += ShutdownSync;
 #endif
+        }
+
+        private static string GenerateAccessToken()
+        {
+            var randomValues = new byte[16];
+            using (var provider = new RNGCryptoServiceProvider())
+                provider.GetBytes(randomValues);
+            return BitConverter.ToString(randomValues).Replace("-", string.Empty);
         }
 
         public static IProcessServer Get(ITaskManager taskManager = null,
@@ -259,7 +269,7 @@
                     ((ManualResetEventSlim)started).Set();
                     if (Server != null)
                     {
-                        Server.Stop().FireAndForget();
+                        Server.Stop(Configuration.AccessToken).FireAndForget();
                         stopSignal.Wait(1000);
                     }
                 }
@@ -367,6 +377,7 @@
             private readonly ITaskManager taskManager;
             private readonly IRpcProcessConfiguration other;
             private int? port;
+            private string accessToken;
 
             public ApplicationConfigurationWrapper(ITaskManager taskManager, IRpcProcessConfiguration other)
             {
@@ -389,6 +400,26 @@
                         taskManager.RunInUI(() => {
                             other.Port = port.Value;
                             port = null;
+                        });
+                    }
+                }
+            }
+
+            public string AccessToken
+            {
+                get => accessToken ?? other.AccessToken;
+                set
+                {
+                    if (taskManager.InUIThread)
+                    {
+                        other.AccessToken = value;
+                    }
+                    else
+                    {
+                        accessToken = value;
+                        taskManager.RunInUI(() => {
+                            other.AccessToken = accessToken;
+                            accessToken = null;
                         });
                     }
                 }
