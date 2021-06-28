@@ -10,5 +10,6 @@
         public string UnityApplicationPath { get; set; }
         public string UnityContentsPath { get; set; }
         public int Pid { get; set; }
+        public string AccessToken { get; set; }
     }
 }

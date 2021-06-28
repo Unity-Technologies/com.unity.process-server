@@ -20,7 +20,7 @@ namespace BaseTests
             using (var test = StartTest())
             {
                 var task = new RpcServerTask(test.TaskManager, test.ProcessManager,
-                        new ServerConfiguration(ServerDirectory)) { Affinity = TaskAffinity.None }
+                        test.Configuration) { Affinity = TaskAffinity.None }
                     .RegisterRemoteTarget<IServer>();
 
                 foreach (var frame in WaitForCompletion(task.StartAwait())) yield return frame;
@@ -31,7 +31,7 @@ namespace BaseTests
                 var expected = 0;
                 var actual = client.Configuration.Port;
 
-                var stopTask = client.GetRemoteTarget<IServer>().Stop();
+                var stopTask = client.GetRemoteTarget<IServer>().Stop(test.Configuration.AccessToken);
                 foreach (var frame in WaitForCompletion(stopTask)) yield return frame;
 
                 Assert.Greater(actual, expected);
@@ -43,7 +43,7 @@ namespace BaseTests
         {
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-                new ServerConfiguration(ServerDirectory)))
+                test.Configuration))
             {
                 var connectTask = processServer.Connect();
                 foreach (var frame in WaitForCompletion(connectTask)) yield return frame;
@@ -61,7 +61,7 @@ namespace BaseTests
         {
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-                new ServerConfiguration(ServerDirectory)))
+                test.Configuration))
             {
                 var task = processServer.NewDotNetProcess(TestApp, "-d done",
                     outputProcessor: new FirstNonNullOutputProcessor<string>())
@@ -82,7 +82,7 @@ namespace BaseTests
         {
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-                new ServerConfiguration(ServerDirectory)))
+                test.Configuration))
             {
                 var restartCount = 0;
                 var restarted = new TaskCompletionSource<ProcessRestartReason>();
@@ -115,7 +115,7 @@ namespace BaseTests
         {
             using (var test = StartTest())
             using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-                new ServerConfiguration(ServerDirectory)))
+                test.Configuration))
             {
                 processServer.ConnectSync();
 
@@ -152,7 +152,7 @@ namespace BaseTests
         {
 	        using (var test = StartTest())
 	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-		        new ServerConfiguration(ServerDirectory)))
+		        test.Configuration))
 	        {
 		        processServer.ConnectSync();
 
@@ -190,7 +190,7 @@ namespace BaseTests
         {
 	        using (var test = StartTest())
 	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-		        new ServerConfiguration(ServerDirectory)))
+		       test.Configuration))
 	        {
 		        processServer.ConnectSync();
 
@@ -237,7 +237,7 @@ namespace BaseTests
         {
 	        using (var test = StartTest())
 	        using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
-		        new ServerConfiguration(ServerDirectory)))
+		        test.Configuration))
 	        {
 		        var task = processServer.NewDotNetProcess(TestApp, "-s 200",
 			        new ProcessOptions(MonitorOptions.KeepAlive),
@@ -263,12 +263,29 @@ namespace BaseTests
 		        foreach (var frame in WaitForCompletion(wait)) yield return frame;
 		        Assert.True(wait.Result != timeout, "Restart did not happen on time");
 
-		        var stopTask = processServer.ProcessRunner.Stop(prepared.Task.Result);
+		        var stopTask = processServer.ProcessRunner.Stop(prepared.Task.Result, test.Configuration.AccessToken);
 		        timeout = Task.Delay(1000);
 		        wait = Task.WhenAny(stopTask, timeout);
 		        foreach (var frame in WaitForCompletion(wait)) yield return frame;
 		        Assert.True(wait.Result != timeout, "Stop did not happen on time");
 	        }
+        }
+
+        [CustomUnityTest]
+        public IEnumerator CanValidateAccessToken()
+        {
+            using (var test = StartTest())
+            using (var processServer = new TestProcessServer(test.TaskManager, test.Environment,
+                test.Configuration))
+            {
+                var connectTask = processServer.Connect();
+                foreach (var frame in WaitForCompletion(connectTask)) yield return frame;
+
+                var stopTask = processServer.Server.Stop("INVALID_ACCESS_TOKEN");
+                foreach (var frame in WaitForCompletion(stopTask)) yield return frame;
+
+                Assert.True(stopTask.Status == TaskStatus.Faulted, "Server accepted invalid access token");
+            }
         }
 
 

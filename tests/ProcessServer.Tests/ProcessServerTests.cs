@@ -60,20 +60,20 @@ namespace BaseTests
             using (var test = StartTest())
             {
                 using (var runner = new ProcessRunner(test.TaskManager, test.ProcessManager,
-                    test.ProcessManager.DefaultProcessEnvironment, Substitute.For<ILogger<ProcessRunner>>()))
+                    test.ProcessManager.DefaultProcessEnvironment, new Unity.ProcessServer.Server.ServerConfiguration(), Substitute.For<ILogger<ProcessRunner>>()))
                 {
 
                     var notifications = Substitute.For<IServerNotifications>();
                     var client = Substitute.For<IRequestContext>();
                     client.GetRemoteTarget<IServerNotifications>().Returns(notifications);
 
-                    string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive });
+                    string id = runner.Prepare(client, "where", "git", new ProcessOptions { MonitorOptions = MonitorOptions.KeepAlive }, null, test.Configuration.AccessToken);
 
-                    await runner.RunProcess(id).Task;
+                    await runner.RunProcess(id, test.Configuration.AccessToken).Task;
 
                     await Task.Delay(100);
                     await notifications.Received().ProcessRestarting(Arg.Any<RpcProcess>(), ProcessRestartReason.KeepAlive);
-                    await runner.StopProcess(id).Task;
+                    await runner.StopProcess(id, test.Configuration.AccessToken).Task;
                 }
             }
         }
@@ -82,6 +82,12 @@ namespace BaseTests
         public async Task CanExecuteAndRestartProcess_()
         {
             await RunTest(CanExecuteAndRestartProcess);
+        }
+
+        [Test]
+        public async Task CanValidateAccessToken_()
+        {
+            await RunTest(CanValidateAccessToken);
         }
     }
 }

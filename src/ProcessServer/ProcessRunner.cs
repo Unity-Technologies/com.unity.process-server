@@ -19,6 +19,7 @@
         private readonly IProcessManager processManager;
         private readonly IProcessEnvironment processEnvironment;
         private readonly ILogger<ProcessRunner> logger;
+        private readonly string accessToken;
         private readonly CancellationTokenSource cts;
 
         private ConcurrentDictionary<string, ContextData> processes = new ConcurrentDictionary<string, ContextData>();
@@ -26,6 +27,7 @@
         public ProcessRunner(ITaskManager taskManager,
             IProcessManager processManager,
             IProcessEnvironment processEnvironment,
+            ServerConfiguration serverConfiguration,
             ILogger<ProcessRunner> logger)
         {
             cts = CancellationTokenSource.CreateLinkedTokenSource(taskManager.Token);
@@ -34,6 +36,7 @@
             this.processManager = processManager;
             this.processEnvironment = processEnvironment;
             this.logger = logger;
+            this.accessToken = serverConfiguration.AccessToken;
         }
 
         public void ClientDisconnecting(IRequestContext context)
@@ -53,8 +56,10 @@
         }
 
         public string Prepare(IRequestContext client, string executable, string arguments, ProcessOptions options,
-            string workingDir = null)
+            string workingDir, string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return null;
 
             var outputProcessor = new RaiseUntilDetachOutputProcess();
@@ -70,8 +75,10 @@
             return id;
         }
 
-        public string Prepare(IRequestContext client, ProcessInfo startInfo, ProcessOptions options)
+        public string Prepare(IRequestContext client, ProcessInfo startInfo, ProcessOptions options, string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return null;
 
             var id = options.MonitorOptions == MonitorOptions.KeepAlive ? startInfo.GetId() : Guid.NewGuid().ToString();
@@ -79,8 +86,10 @@
             return id;
         }
 
-        public IProcessTask RunProcess(string id)
+        public IProcessTask RunProcess(string id, string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return null;
 
             var task = GetTask(id);
@@ -101,8 +110,10 @@
             return task;
         }
 
-        public IProcessTask StopProcess(string id)
+        public IProcessTask StopProcess(string id, string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return null;
             if (!processes.TryGetValue(id, out var data)) return null;
 
@@ -121,8 +132,10 @@
             return task;
         }
 
-        public void Detach(string id)
+        public void Detach(string id, string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return;
 
             if (processes.TryGetValue(id, out var data))
@@ -244,7 +257,7 @@
             }
 
             SetupProcess(client, process);
-            RunProcess(process.Id);
+            RunProcess(process.Id, accessToken);
         }
 
         private void ReplayEvents(string id)
@@ -496,6 +509,7 @@
         {
             private readonly ProcessRunner owner;
             private readonly IRequestContext client;
+
             public Implementation(ProcessRunner owner, IRequestContext client)
             {
                 this.owner = owner;
@@ -503,55 +517,57 @@
             }
 
             public Task<RpcProcess> Prepare(string executable, string args, string workingDirectory,
-                ProcessOptions options)
+                ProcessOptions options, string accessToken)
             {
-                var id = owner.Prepare(client, executable, args, options, workingDirectory);
+                var id = owner.Prepare(client, executable, args, options, workingDirectory, accessToken);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options)
+            public Task<RpcProcess> Prepare(string executable, string args, ProcessOptions options, string accessToken)
             {
-                var id = owner.Prepare(client, executable, args, options);
+                var id = owner.Prepare(client, executable, args, options, null, accessToken);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options)
+            public Task<RpcProcess> Prepare(ProcessInfo startInfo, ProcessOptions options, string accessToken)
             {
-                var id = owner.Prepare(client, startInfo, options);
+                var id = owner.Prepare(client, startInfo, options, accessToken);
                 return Task.FromResult(owner.GetProcess(id));
             }
 
-            public Task Run(RpcProcess process)
+            public Task Run(RpcProcess process, string accessToken)
             {
-                owner.RunProcess(process.Id);
-                return Task.CompletedTask;
-            }
-            public Task Stop(RpcProcess process)
-            {
-                owner.StopProcess(process.Id);
-                return Task.CompletedTask;
-            }
-            public Task Detach(RpcProcess process)
-            {
-                owner.Detach(process.Id);
+                owner.RunProcess(process.Id, accessToken);
                 return Task.CompletedTask;
             }
 
-            public Task Run(string id)
+            public Task Stop(RpcProcess process, string accessToken)
             {
-                owner.RunProcess(id);
+                owner.StopProcess(process.Id, accessToken);
                 return Task.CompletedTask;
             }
 
-            public Task Stop(string id)
+            public Task Detach(RpcProcess process, string accessToken)
             {
-                owner.StopProcess(id);
+                owner.Detach(process.Id, accessToken);
                 return Task.CompletedTask;
             }
 
-            public Task Detach(string id)
+            public Task Run(string id, string accessToken)
             {
-                owner.Detach(id);
+                owner.RunProcess(id, accessToken);
+                return Task.CompletedTask;
+            }
+
+            public Task Stop(string id, string accessToken)
+            {
+                owner.StopProcess(id, accessToken);
+                return Task.CompletedTask;
+            }
+
+            public Task Detach(string id, string accessToken)
+            {
+                owner.Detach(id, accessToken);
                 return Task.CompletedTask;
             }
         }

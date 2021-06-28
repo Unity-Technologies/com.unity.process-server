@@ -8,6 +8,12 @@
         /// if you want to run your own rpc server process.
         /// </summary>
         int Port { get; set; }
+
+        /// <summary>
+        /// Access token required to invoke remote procedure calls.
+        /// </summary>
+        string AccessToken { get; set; }
+
         /// <summary>
         /// The path to the process server executable.
         /// </summary>

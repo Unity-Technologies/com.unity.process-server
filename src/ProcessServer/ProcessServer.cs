@@ -23,12 +23,14 @@
         private readonly Dictionary<string, IRequestContext> clients = new Dictionary<string, IRequestContext>();
         private bool stopping = false;
 		private readonly int parentPID;
+        private readonly string accessToken;
 		private readonly Timer parentCheckTimer;
 		private readonly TimeSpan checkInterval = TimeSpan.FromSeconds(30);
 
         public ProcessServer(IHostApplicationLifetime app, ServerConfiguration configuration)
         {
 	        parentPID = configuration.Pid;
+            accessToken = configuration.AccessToken;
 	        this.app = app;
 
 	        app.ApplicationStopping.Register(() => stopped.TrySetResult(true));
@@ -52,8 +54,10 @@
             }
         }
 
-        public Task Stop()
+        public Task Stop(string accessToken)
         {
+            if (accessToken != this.accessToken)
+                throw new UnauthorizedAccessException();
             if (stopping) return stopped.Task;
             stopping = true;
             app.StopApplication();
@@ -100,9 +104,9 @@
             {
                 this.owner = owner;
             }
-            public Task Stop()
+            public Task Stop(string accessToken)
             {
-                return owner.Stop();
+                return owner.Stop(accessToken);
             }
         }
     }

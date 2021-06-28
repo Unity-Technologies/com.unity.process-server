@@ -79,6 +79,7 @@ namespace Unity.ProcessServer
     class ApplicationConfiguration : ScriptableSingleton<ApplicationConfiguration>, IRpcProcessConfiguration
     {
         [SerializeField] private int port;
+        [SerializeField] private string accessToken;
         [SerializeField] private string executablePath;
         [SerializeField] private string remoteProcessId;
 
@@ -92,6 +93,19 @@ namespace Unity.ProcessServer
                 if (port != value)
                 {
                     port = value;
+                    Save(true);
+                }
+            }
+        }
+
+        public string AccessToken
+        {
+            get => accessToken;
+            set
+            {
+                if (accessToken != value)
+                {
+                    accessToken = value;
                     Save(true);
                 }
             }

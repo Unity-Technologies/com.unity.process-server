@@ -64,7 +64,7 @@
             {
                 var runner = GetRunner();
 
-                var task = runner.Prepare(ProcessInfo.FromStartInfo(StartInfo), ProcessOptions);
+                var task = runner.Prepare(ProcessInfo.FromStartInfo(StartInfo), ProcessOptions, server.Configuration.AccessToken);
 
                 task.Wait(cts.Token);
 
@@ -72,7 +72,7 @@
 
                 OnProcessPrepared?.Invoke(this, remoteProcess);
 
-                runner.Run(remoteProcess).Wait(cts.Token);
+                runner.Run(remoteProcess, server.Configuration.AccessToken).Wait(cts.Token);
 
                 cts.Token.WaitHandle.WaitOne();
             }
@@ -94,7 +94,7 @@
             var runner = GetRunner();
             if (runner != null)
             {
-                var task = runner.Stop(remoteProcess);
+                var task = runner.Stop(remoteProcess, server.Configuration.AccessToken);
                 if (!dontWait)
                 {
                     try
@@ -115,7 +115,7 @@
             if (!detached)
             {
                 var runner = GetRunner();
-                runner.Detach(remoteProcess);
+                runner.Detach(remoteProcess, server.Configuration.AccessToken);
                 detached = true;
                 Dispose();
             }
