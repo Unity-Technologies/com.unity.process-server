@@ -3,6 +3,7 @@
 	{
 		"manifestIgnore":
 		[
+			"*/System.ComponentModel.Annotations.dll",
 			"*/YamlDotNet.dll"
 		]
 	}
