@@ -84,8 +84,11 @@
             args.Add(environment.UnityProjectPath.ToSPath().InQuotes());
             args.Add("-pid");
             args.Add(System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
-            args.Add("-accessToken");
-            args.Add(configuration.AccessToken);
+            if (!string.IsNullOrEmpty(configuration.AccessToken))
+            {
+                args.Add("-accessToken");
+                args.Add(configuration.AccessToken);
+            }
             return string.Join(" ", args);
         }
 
