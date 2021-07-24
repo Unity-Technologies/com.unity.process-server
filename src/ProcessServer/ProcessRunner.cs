@@ -115,6 +115,7 @@
             if (accessToken != this.accessToken)
                 throw new UnauthorizedAccessException();
             if (cts.IsCancellationRequested) return null;
+            if (string.IsNullOrEmpty(id)) return null;
             if (!processes.TryGetValue(id, out var data)) return null;
 
             data.ManuallyStopped = true;
