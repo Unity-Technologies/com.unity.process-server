@@ -136,7 +136,7 @@
                         processTask = null;
                         port = 0;
                         result = default;
-                        if (retries == 0)
+                        if (retries == 0 || ex is OperationCanceledException)
                             ex.Rethrow();
                     }
                 }
